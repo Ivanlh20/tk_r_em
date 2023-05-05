@@ -33,12 +33,31 @@ def add_extra_row_or_column(x):
 
     return x
 
+def add_extra_row_or_column_patch_based(x):
+    if x.shape[0] % 2 == 1:
+        v_mean = x.mean(axis=(0, 1), keepdims=True)
+        v_mean_tiled = np.tile(v_mean, (1, x.shape[1]))
+        x = np.concatenate((x, v_mean_tiled), axis=0)
+
+    if x.shape[1] % 2 == 1:
+        v_mean = x.mean(axis=(0, 1), keepdims=True)
+        v_mean_tiled = np.tile(v_mean, (x.shape[0], 1))
+        x = np.concatenate((x, v_mean_tiled), axis=1)
+
+    return x
+
 def remove_extra_row_or_column(x, x_i_sh):
     if x_i_sh != x.shape:
         return x[:, :x_i_sh[1], :x_i_sh[2], :]
     else:
         return x
 
+def remove_extra_row_or_column_patch_based(x, x_i_sh):
+    if x_i_sh != x.shape:
+        return x[:x_i_sh[0], :x_i_sh[1]]
+    else:
+        return x
+    
 def adjust_output_dimensions(x, x_i_shape):
     ndim = len(x_i_shape)
     if ndim == 2:
@@ -53,11 +72,13 @@ def adjust_output_dimensions(x, x_i_shape):
 
 def get_centered_range(n, patch_size, stride):
     patch_size_half = patch_size // 2
+    if patch_size_half == n-patch_size_half:
+        return np.array([patch_size_half])
+
     p = np.arange(patch_size_half, n-patch_size_half, stride)
     if p[-1] + patch_size_half < n:
         p = np.append(p, n - patch_size_half)
     return p
-
 
 def get_range(im_shape, patch_size, strides):
     py = get_centered_range(im_shape[0], patch_size[0], strides[0])
@@ -131,7 +152,12 @@ class Model(tf.keras.Model):
 
         x = x.squeeze().astype(np.float32)
 
-        patch_size = max(patch_size, 256)
+        x_i_sh_e = x.shape
+        
+        # Adding extra row or column if necessary
+        x = add_extra_row_or_column_patch_based(x)
+        
+        patch_size = max(patch_size, 128)
         patch_size = (min(patch_size, x.shape[0]), min(patch_size, x.shape[1]))
         
         # Adjust the stride to have an overlap between patches
@@ -172,6 +198,9 @@ class Model(tf.keras.Model):
         # Normalize the denoised image using the count_map
         x_r /= count_map
         
+        # Removing extra row or column if added
+        x = remove_extra_row_or_column_patch_based(x, x_i_sh_e)
+
         return x_r
 
 def load_network(model_name: str = 'sfr_hrstem'):

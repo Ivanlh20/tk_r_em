@@ -6,7 +6,9 @@ images/hrsem.png
 images/lrsem.png
 images/hrtem.png
 images/lrtem.png
+test
 tk_r_em.egg-info
 tk_r_em/__pycache__
 build
+dist
 tk_r_em-1.0.1.tar.gz

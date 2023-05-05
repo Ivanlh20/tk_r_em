@@ -18,9 +18,46 @@ One of the main advantages of our image restoration method is that the training 
 Figure 1. Experimental image restoration for various microscopy modalities. The top row illustrates the raw experimental images, while the bottom row displays the restored versions
 
 # Installation via Pip
-To use **tk_r_em**, you need to install TensorFlow and its CUDA libraries if you want to use GPU acceleration. The specific version of TensorFlow required by **tk_r_em** depends on your operating system. It is recommended to install TensorFlow in a virtual environment to avoid conflicts with other packages.
+## Quick install
+Below are the quick versions of the installation commands. For step-by-step instructions, please scroll down
 
-## 1. Create a conda environment
+For GPU support
+### Linux
+```bash
+conda install -c conda-forge cudatoolkit=11.8.0
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+python -m pip install tensorflow==2.12.* install tk_r_em
+```
+
+### Windows
+```bash
+conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
+python -m pip install nvidia-cudnn-cu11==8.6.0.163
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+python -m pip install tensorflow==2.10.* tk_r_em
+```
+
+If you don't have a GPU, don't worry; the package also runs on CPU:
+### Linux (CPU-only)
+```bash
+python -m pip install tensorflow-cpu==2.12.* tk_r_em
+```
+
+### Windows (CPU-only)
+```bash
+python -m pip install tensorflow-cpu==2.10.* tk_r_em
+```
+
+## Step-by-Step Install
+Below are the step-by-step instructions for installing the package with and without GPU support.
+
+To utilize **tk_r_em**, you'll need to install TensorFlow. If you plan to use GPU acceleration, the installation of CUDA libraries is also necessary. The required version of TensorFlow for **tk_r_em** varies depending on your operating system. We recommend installing TensorFlow within a virtual environment to prevent conflicts with other packages.
+
+## 1. Install Miniconda and create an environment
 [miniconda](https://docs.conda.io/en/latest/miniconda.html) is the recommended approach for installing TensorFlow with GPU support. It creates a separate environment to avoid changing any installed software in your system. This is also the easiest way to install the required software especially for the GPU setup.
 
 Let us start by creating a new conda environment and activate it with the following command:
@@ -33,11 +70,55 @@ conda activate py310_gpu
 ## 2. Setting up GPU (optional)
 If you plan to run TensorFlow on a GPU, you'll need to install the NVIDIA GPU driver and then install CUDA and cuDNN using Conda. You can use the following command to install them::
 
+### **Linux**
+On linux system we can install and use the latest Tensorflow version, which is link to thefollowing CUDA version using the following command:
+```
+conda install -c conda-forge cudatoolkit=11.8.0
+pip install nvidia-cudnn-cu11==8.6.0.163
+```
+
+To ensure that the system paths recognize CUDA when your environment is activated, you can run the following commands ([Tensorflow step by step](https://www.tensorflow.org/install/pip#linux_1)):
+
+```bash
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+```
+
+These commands create a shell script in the activate.d directory, which sets the LD_LIBRARY_PATH environment variable when your environment is activated. This allows TensorFlow to locate the CUDA libraries that it needs to run on the GPU.
+
+### Ubuntu 22.04
+In Ubuntu 22.04, you may encounter the following error:
+
+```bash
+Can't find libdevice directory ${CUDA_DIR}/nvvm/libdevice.
+...
+Couldn't invoke ptxas --version
+...
+InternalError: libdevice not found at ./libdevice.10.bc [Op:__some_op]
+```
+To fix this error, you will need to run the following commands.
+
+```bash
+# Install NVCC
+conda install -c nvidia cuda-nvcc=11.3.58
+# Configure the XLA cuda directory
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+printf 'export XLA_FLAGS=--xla_gpu_cuda_data_dir=$CONDA_PREFIX/lib/\n' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+# Copy libdevice file to the required path
+mkdir -p $CONDA_PREFIX/lib/nvvm/libdevice
+cp $CONDA_PREFIX/lib/libdevice.10.bc $CONDA_PREFIX/lib/nvvm/libdevice/
+```
+
+### **Windows**
+For TensorFlow version 2.10.* on Windows, which was the last TensorFlow release to support GPU on native Windows, install the NVIDIA GPU driver and then install the following specific version of CUDA and cuDNN using Conda:
+
 ```
 conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
 ```
 
-To ensure that the system paths recognize CUDA when your environment is activated, you can run the following commands ([Tensorflow step by step](https://www.tensorflow.org/install/pip#linux_1)):
+To ensure that the system paths recognize CUDA when your environment is activated, you can run the following commands:
 
 ```bash
 mkdir -p $CONDA_PREFIX/etc/conda/activate.d
@@ -48,17 +129,19 @@ These commands create a shell script in the activate.d directory, which sets the
 ## 3. Install Tensorflow
 
 ### Windows
-If you're using Windows, you need to install TensorFlow version 2.10.*, since it was the last TensorFlow release that supported GPU on native Windows. Starting with TensorFlow 2.11, you will need to install TensorFlow in WSL2 or install tensorflow-cpu instead. To install TensorFlow, run the following command:
+On Windows, install TensorFlow version 2.10.*, the last release that supported GPU on native Windows. Starting with TensorFlow 2.11, you'll need to install TensorFlow in WSL2 or install tensorflow-cpu instead. To install TensorFlow, run the following command:
 
 ```
 pip install tensorflow==2.10.*
 ```
 ### Linux
-If you're using Linux, install TensorFlow version 2.11.* using pip:
+On Linux, install TensorFlow version 2.12.* using pip:
 
 ```
-pip install tensorflow==2.11.*
+pip install tensorflow==2.12.*
 ```
+
+With these installations, you should now have TensorFlow set up with GPU support (if applicable).
 
 ## 4. Install tk_r_em
 

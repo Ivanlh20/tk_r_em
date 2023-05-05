@@ -1,5 +1,5 @@
 __name__ = 'tk_r_em'
-__version__ = '1.0.1'
+__version__ = '1.0.3'
 __description__ = 'Deep convolutional neural networks to restore single-shot electron microscopy images'
 __author__ = 'Ivan Lobato'
 __author_email__='ivanlh20@gmail.com'
