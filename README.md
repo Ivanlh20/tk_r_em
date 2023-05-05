@@ -25,6 +25,7 @@ For GPU support
 ### Linux
 ```bash
 conda install -c conda-forge cudatoolkit=11.8.0
+pip install nvidia-cudnn-cu11==8.6.0.163
 mkdir -p $CONDA_PREFIX/etc/conda/activate.d
 echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
@@ -35,7 +36,6 @@ python -m pip install tensorflow==2.12.* install tk_r_em
 ### Windows
 ```bash
 conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
-python -m pip install nvidia-cudnn-cu11==8.6.0.163
 mkdir -p $CONDA_PREFIX/etc/conda/activate.d
 echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
 python -m pip install tensorflow==2.10.* tk_r_em
