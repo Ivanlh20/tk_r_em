@@ -23,35 +23,35 @@ Below are the quick versions of the installation commands. For detailed instruct
 
 ### Linux
 
-**GPU support**
+- **GPU support**
 
-```bash
-conda install -c conda-forge cudatoolkit=11.8.0
-pip install nvidia-cudnn-cu11==8.6.0.163
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-python -m pip install tensorflow==2.12.* tk_r_em
-```
+	```bash
+	conda install -c conda-forge cudatoolkit=11.8.0
+	pip install nvidia-cudnn-cu11==8.6.0.163
+	mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+	echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+	echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+	source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+	python -m pip install tensorflow==2.12.* tk_r_em
+	```
 
-**CPU-only support**
-```bash
-python -m pip install tensorflow-cpu==2.12.* tk_r_em
-```
+- **CPU-only support**
+	```bash
+	python -m pip install tensorflow-cpu==2.12.* tk_r_em
+	```
 
 ### Windows
-**GPU support**
-```bash
-conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-python -m pip install tensorflow==2.10.* tk_r_em
-```
-**CPU-only support**
-```bash
-python -m pip install tensorflow-cpu==2.10.* tk_r_em
-```
+- **GPU support**
+	```bash
+	conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
+	mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+	echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+	python -m pip install tensorflow==2.10.* tk_r_em
+	```
+- **CPU-only support**
+	```bash
+	python -m pip install tensorflow-cpu==2.10.* tk_r_em
+	```
 
 ## Step-by-Step Install
 Below are the step-by-step instructions for installing the package with and without GPU support.
@@ -62,7 +62,6 @@ To utilize **tk_r_em**, you'll need to install TensorFlow. If you plan to use GP
 [miniconda](https://docs.conda.io/en/latest/miniconda.html) is the recommended approach for installing TensorFlow with GPU support. It creates a separate environment to avoid changing any installed software in your system. This is also the easiest way to install the required software especially for the GPU setup.
 
 Let us start by creating a new conda environment and activate it with the following command:
-
 ```bash
 conda create -n py310_gpu python=3.10.*
 conda activate py310_gpu
@@ -73,10 +72,11 @@ If you plan to run TensorFlow on a GPU, you'll need to install the NVIDIA GPU dr
 
 ### **Linux**
 On Linux, you can install and use the latest TensorFlow version that is linked to a specific CUDA version using the following command:
-```
+```bash
 conda install -c conda-forge cudatoolkit=11.8.0
 pip install nvidia-cudnn-cu11==8.6.0.163
 ```
+
 The first command installs the CUDA toolkit, which is a set of software tools used to accelerate applications on NVIDIA GPUs. The second command installs the cuDNN library, which is an optimized deep neural network library for NVIDIA GPUs.
 
 To ensure that the system paths recognize CUDA when your environment is activated, you can run the following commands ([Tensorflow step by step](https://www.tensorflow.org/install/pip#linux_1)):
@@ -91,7 +91,6 @@ These commands create a shell script in the activate.d directory, which sets the
 
 ### Ubuntu 22.04
 In Ubuntu 22.04, you may encounter the following error:
-
 ```bash
 Can't find libdevice directory ${CUDA_DIR}/nvvm/libdevice.
 ...
@@ -99,6 +98,7 @@ Couldn't invoke ptxas --version
 ...
 InternalError: libdevice not found at ./libdevice.10.bc [Op:__some_op]
 ```
+
 To fix this error, you will need to run the following commands.
 
 ```bash
@@ -116,7 +116,7 @@ cp $CONDA_PREFIX/lib/libdevice.10.bc $CONDA_PREFIX/lib/nvvm/libdevice/
 ### **Windows**
 For TensorFlow version 2.10.* on Windows, which was the last TensorFlow release to support GPU on native Windows, you can install the NVIDIA GPU driver and then install the following specific version of CUDA and cuDNN using Conda:
 
-```
+```bash
 conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
 ```
 
@@ -134,31 +134,30 @@ After installing the CUDA libraries, you can install TensorFlow. The required ve
 ### **Linux**
 On Linux, install TensorFlow version 2.12.* using pip:
 
-**GPU support**
+- **GPU support**
+	```bash
+	pip install tensorflow==2.12.*
+	```
 
-```
-pip install tensorflow==2.12.*
-```
+- **CPU-only support**
+	```bash
+	pip install tensorflow-cpu==2.12.*
+	```
 
-**CPU-only support**
-```
-pip install tensorflow-cpu==2.12.*
-```
 Note that running on CPU may be slower than running on a GPU, but it should still be functional.
 
 ### **Windows**
 On Windows, the last version of TensorFlow that supported GPU on native Windows was 2.10.*. Starting with TensorFlow 2.11, you'll need to install TensorFlow in WSL2 or install tensorflow-cpu instead.
 
-**GPU support**
+- **GPU support**
+	```bash
+	pip install tensorflow==2.10.*
+	```
 
-```
-pip install tensorflow==2.10.*
-```
-
-**CPU-only support**
-```
-pip install tensorflow-cpu==2.10.*
-```
+- **CPU-only support**
+	```bash
+	pip install tensorflow-cpu==2.10.*
+	```
 
 With these installations, you should now have TensorFlow set up with GPU support (if applicable).
 
@@ -166,8 +165,7 @@ With these installations, you should now have TensorFlow set up with GPU support
 
 ### Option 1: Install from PIP
 After installing TensorFlow, you can install **tk_r_em** using pip:
-
-```
+```bash
 pip install tk_r_em
 ```
 
@@ -175,14 +173,12 @@ This command will install the latest version of **tk_r_em** and its required dep
 
 ## Option 2: Install from Git-Clone
 This option is ideal if you want to edit the code. Clone the repository:
-
-```
+```bash
 $ git clone https://github.com/Ivanlh20/r_em.git
 ```
 
 Then, change into its directory and install it using pip:
-
-```
+```bash
 pip install -e .
 ```
 
