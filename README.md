@@ -1,4 +1,4 @@
-This repository is a comprehensive and adaptable collection of deep learning models specifically designed to restore and enhance various electron microscopy modalities. It offers an all-in-one solution for researchers, engineers, and electron microscopy enthusiasts looking to take advantage of the latest neural network technology to enhance the quality of their electron microscopy images.
+This GitHub repository offers a versatile and comprehensive collection of deep learning models that are specifically designed to restore and enhance various electron microscopy modalities. Developed by Ivan Lobato (Ivanlh20@gmail.com), these models provide an all-in-one solution for researchers, engineers, and electron microscopy enthusiasts who want to leverage the latest neural network technology to improve the quality of their electron microscopy images.
 
 # Deep convolutional neural networks to restore single-shot electron microscopy images
 I.Lobato<sup>1,2</sup>, T. Friedrich<sup>1,2</sup>, S. Van Aert<sup>1,2</sup>
