@@ -99,8 +99,7 @@ Couldn't invoke ptxas --version
 InternalError: libdevice not found at ./libdevice.10.bc [Op:__some_op]
 ```
 
-To fix this error, you will need to run the following commands.
-
+To fix this error, you will need to run the following commands. 
 ```bash
 # Install NVCC
 conda install -c nvidia cuda-nvcc=11.3.58
