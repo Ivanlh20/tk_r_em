@@ -23,7 +23,7 @@ Below are the quick versions of the installation commands. For detailed instruct
 
 ### Linux
 
-**For GPU support**
+**GPU support**
 
 ```bash
 conda install -c conda-forge cudatoolkit=11.8.0
@@ -41,7 +41,7 @@ python -m pip install tensorflow-cpu==2.12.* tk_r_em
 ```
 
 ### Windows
-**For GPU support**
+**GPU support**
 ```bash
 conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
 mkdir -p $CONDA_PREFIX/etc/conda/activate.d
@@ -134,7 +134,7 @@ After installing the CUDA libraries, you can install TensorFlow. The required ve
 ### **Linux**
 On Linux, install TensorFlow version 2.12.* using pip:
 
-**For GPU support**
+**GPU support**
 
 ```
 pip install tensorflow==2.12.*
@@ -149,7 +149,7 @@ Note that running on CPU may be slower than running on a GPU, but it should stil
 ### **Windows**
 On Windows, the last version of TensorFlow that supported GPU on native Windows was 2.10.*. Starting with TensorFlow 2.11, you'll need to install TensorFlow in WSL2 or install tensorflow-cpu instead.
 
-**For GPU support**
+**GPU support**
 
 ```
 pip install tensorflow==2.10.*
@@ -447,7 +447,7 @@ You may now incorporate **tk_r_em** into your Python code.
     Figure 5 showcases an HRSTEM experimental image and its restored version obtained by using the window-patch-based prediction method. The left column displays the original experimental HRSTEM image taken by Zezhong Zang, while the right column shows the restored image.
 
 ## 5. Performance
-All models of **tk_r_em** have been optimized to run on a standard desktop computer, and its performance can be significantly improved by utilizing GPU acceleration.
+All models of **tk_r_em** have been optimized to run efficiently on a standard desktop computer. However, for faster performance, you can utilize GPU acceleration.
 
 ## 6. How to cite:
 **Please cite tk_r_em in your publications if it helps your research:**
