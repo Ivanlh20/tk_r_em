@@ -1,5 +1,6 @@
 gen_exp_test_data.m
 gen_sim_test_data.m
+test.py
 images/tem_distortions.png
 images/stem_distortions.png
 images/hrsem.png
@@ -11,4 +12,4 @@ tk_r_em.egg-info
 tk_r_em/__pycache__
 build
 dist
-tk_r_em-1.0.1.tar.gz
+*.tar.gz

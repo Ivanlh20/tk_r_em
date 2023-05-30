@@ -1,7 +1,10 @@
 from setuptools import setup, find_packages
+from os import path
 
-from tk_r_em import  __name__,__version__,__description__,__url__
-from tk_r_em import  __author__, __author_email__, __credits__, __license__
+_dir = path.abspath(path.dirname(__file__))
+
+with open(path.join(_dir, 'tk_r_em', 'version.py')) as f:
+    exec(f.read())
 
 setup(
     name=__name__,
@@ -10,7 +13,6 @@ setup(
     url=__url__,
     author=__author__,
     author_email=__author_email__,
-    credits=__credits__,
     license=__license__,
     packages=find_packages(),
  
