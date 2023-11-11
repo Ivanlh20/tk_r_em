@@ -13,3 +13,5 @@ tk_r_em/__pycache__
 build
 dist
 *.tar.gz
+tk_r_em-1.0.1.tar.gz
+demo/*
