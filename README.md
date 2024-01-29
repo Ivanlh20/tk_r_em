@@ -7,7 +7,7 @@ I.Lobato<sup>1,2</sup>, T. Friedrich<sup>1,2</sup>, S. Van Aert<sup>1,2</sup>
 
 <sup>2</sup>NANOlab Center of Excellence, University of Antwerp, Department of Physics, Groenenborgerlaan 171, B-2020 Antwerp, Belgium
 
-Paper: http://arxiv.org/abs/2303.17025
+Paper: https://www.nature.com/articles/s41524-023-01188-0
 
 ## Overview
 State-of-the-art electron microscopes such as scanning electron microscopes (SEM), scanning transmission electron microscopes (STEM) and transmission electron microscopes (TEM) have become increasingly sophisticated. However, the quality of experimental images is often hampered by stochastic and deterministic distortions arising from the instrument or its environment. These distortions can arise during any stage of the imaging process, including image acquisition, transmission, or visualization. In this paper, we will discuss the main sources of distortion in TEM and S(T)EM images, develop models to describe them and propose a method to correct these distortions using a convolutional neural network. We demonstrate the effectiveness of our approach on a variety of experimental images and show that it can significantly improve the signal-to-noise ratio resulting in an increase in the amount of quantitative structural information that can be extracted from the image. Overall, our findings provide a powerful framework for improving the quality of electron microscopy images and advancing the field of structural analysis and quantification in materials science and biology. The source code and trained models for our approach are made available in the accompanying repository.
@@ -26,18 +26,14 @@ Below are the quick versions of the installation commands. For detailed instruct
 - **GPU support**
 
 	```bash
-	conda install -c conda-forge cudatoolkit=11.8.0
-	pip install nvidia-cudnn-cu11==8.6.0.163
-	mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-	echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-	echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-	source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-	python -m pip install tensorflow==2.12.* tk_r_em
+	pip install --upgrade pip
+	pip install tensorflow[and-cuda]==2.14.1
+	pip install tk_r_em
 	```
 
 - **CPU-only support**
 	```bash
-	python -m pip install tensorflow-cpu==2.12.* tk_r_em
+	ppip install tensorflow-cpu==2.14.1.* tk_r_em
 	```
 
 ### Windows
@@ -68,50 +64,14 @@ conda activate py310_gpu
 ```
 
 ## 2. Setting up GPU (optional)
-If you plan to run TensorFlow on a GPU, you'll need to install the NVIDIA GPU driver and then install CUDA and cuDNN using Conda. You can use the following command to install them:
-
-### **Linux**
-On Linux, you can install and use the latest TensorFlow version that is linked to a specific CUDA version using the following command:
+If you plan to run TensorFlow on a GPU, you'll need to install the [NVIDIA GPU driver](https://www.nvidia.com/Download/index.aspx). You can use the following command to verify it is installed.
 ```bash
-conda install -c conda-forge cudatoolkit=11.8.0
-pip install nvidia-cudnn-cu11==8.6.0.163
+    nvidia-smi
 ```
-
-The first command installs the CUDA toolkit, which is a set of software tools used to accelerate applications on NVIDIA GPUs. The second command installs the cuDNN library, which is an optimized deep neural network library for NVIDIA GPUs.
-
-To ensure that the system paths recognize CUDA when your environment is activated, you can run the following commands ([Tensorflow step by step](https://www.tensorflow.org/install/pip#linux_1)):
-
+TensorFlow requires a recent version of pip, so upgrade your pip installation to be sure you're running the latest version.
 ```bash
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-echo 'CUDNN_PATH=$(dirname $(python -c "import nvidia.cudnn;print(nvidia.cudnn.__file__)"))' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/:$CUDNN_PATH/lib' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+    pip install --upgrade pip
 ```
-
-These commands create a shell script in the activate.d directory, which sets the `LD_LIBRARY_PATH` environment variable when your environment is activated. This allows TensorFlow to locate the CUDA libraries that it needs to run on the GPU.
-
-### Ubuntu 22.04
-In Ubuntu 22.04, you may encounter the following error:
-```bash
-Can't find libdevice directory ${CUDA_DIR}/nvvm/libdevice.
-...
-Couldn't invoke ptxas --version
-...
-InternalError: libdevice not found at ./libdevice.10.bc [Op:__some_op]
-```
-
-To fix this error, you will need to run the following commands. 
-```bash
-# Install NVCC
-conda install -c nvidia cuda-nvcc=11.3.58
-# Configure the XLA cuda directory
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-printf 'export XLA_FLAGS=--xla_gpu_cuda_data_dir=$CONDA_PREFIX/lib/\n' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-# Copy libdevice file to the required path
-mkdir -p $CONDA_PREFIX/lib/nvvm/libdevice
-cp $CONDA_PREFIX/lib/libdevice.10.bc $CONDA_PREFIX/lib/nvvm/libdevice/
-```
-
 ### **Windows**
 For TensorFlow version 2.10.* on Windows, which was the last TensorFlow release to support GPU on native Windows, you can install the NVIDIA GPU driver and then install the following specific version of CUDA and cuDNN using Conda:
 
@@ -131,16 +91,16 @@ These commands create a shell script in the activate.d directory, which sets the
 After installing the CUDA libraries, you can install TensorFlow. The required version of TensorFlow varies depending on your operating system.
 
 ### **Linux**
-On Linux, install TensorFlow version 2.12.* using pip:
+On Linux, install TensorFlow version 2.14.1.* using pip:
 
 - **GPU support**
-	```bash
-	pip install tensorflow==2.12.*
-	```
+    ```bash
+    pip install tensorflow[and-cuda]==2.14.1
+    ```
 
 - **CPU-only support**
 	```bash
-	pip install tensorflow-cpu==2.12.*
+	pip install tensorflow-cpu==2.14.1.*
 	```
 
 Note that running on CPU may be slower than running on a GPU, but it should still be functional.
@@ -448,11 +408,20 @@ All models of **tk_r_em** have been optimized to run efficiently on a standard d
 **Please cite tk_r_em in your publications if it helps your research:**
 
 ```bibtex
-@article{Lobato2023,
+@article{Lobato2024,
    author = {I. Lobato and T. Friedrich and S. Van Aert},
-   month = {3},
+   doi = {10.1038/s41524-023-01188-0},
+   issn = {2057-3960},
+   issue = {1},
+   journal = {npj Computational Materials 2024 10:1},
+   keywords = {Imaging techniques,Transmission electron microscopy},
+   month = {1},
+   pages = {1-19},
+   publisher = {Nature Publishing Group},
    title = {Deep convolutional neural networks to restore single-shot electron microscopy images},
-   url = {https://arxiv.org/abs/2303.17025v1},
-   year = {2023},
+   volume = {10},
+   url = {https://www.nature.com/articles/s41524-023-01188-0},
+   year = {2024},
 }
+
 ```
