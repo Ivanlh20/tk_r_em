@@ -7,6 +7,7 @@ images/hrsem.png
 images/lrsem.png
 images/hrtem.png
 images/lrtem.png
+.vscode
 test
 tk_r_em.egg-info
 tk_r_em/__pycache__

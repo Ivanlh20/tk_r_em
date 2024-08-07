@@ -33,7 +33,7 @@ Below are the quick versions of the installation commands. For detailed instruct
 
 - **CPU-only support**
 	```bash
-	ppip install tensorflow-cpu==2.14.1.* tk_r_em
+	pip install tensorflow-cpu==2.14.1.* tk_r_em
 	```
 
 ### Windows

@@ -92,7 +92,7 @@ def process_prediction(data, x_r, count_map, window, ib, sy, sx):
     for ik in range(ib):
         x_r_ik = data[ik, ..., 0].squeeze() * window
         count_map[sy[ik], sx[ik]] += window
-        x_r[sy[ik], sx[ik]] += x_r_ik
+        x_r[sy[ik], sx[ik]] += x_r_ik        
 
 def butterworth_window(shape, cutoff_radius_ftr, order):
     assert len(shape) == 2, "Shape must be a tuple of length 2 (height, width)"
@@ -177,6 +177,7 @@ class Model(tf.keras.Model):
         count_map = np.zeros(x.shape, dtype=np.float32)
         
         window = butterworth_window(patch_size, 0.33, 4)
+        # window = butterworth_window(patch_size, 0.25, 2)
             
         ib = 0
         for s_iy, s_ix in get_range(x.shape, patch_size, stride):
