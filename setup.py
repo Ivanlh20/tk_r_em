@@ -22,7 +22,7 @@ install_requires = [
 if tf_version and tf_version.startswith('2.10'):
     install_requires.extend([
         'numpy>=1.20.0,<1.24.0',
-        'matplotlib>=3.1.0,<3.5.0'
+        'matplotlib>=3.6.0,<3.9.0'
     ])
 else:
     install_requires.extend([
