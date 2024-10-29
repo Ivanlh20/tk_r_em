@@ -49,7 +49,7 @@ def fcn_inference():
         y_ik = y[ik, :, :, 0].squeeze()
 
         ir = 0
-        axs[ir][ik].imshow(x_ik, cmap='viridis')
+        axs[ir][ik].imshow(x_ik, cmap='gray')
         axs[ir][ik].set_xticks([])
         axs[ir][ik].set_yticks([])
         axs[ir][ik].grid(False)
@@ -58,7 +58,7 @@ def fcn_inference():
             axs[ir][ik].set_ylabel(f"Detected {net_name} image", fontsize=14, )
 
         ir = 1
-        axs[ir][ik].imshow(y_p_ik, cmap='viridis')
+        axs[ir][ik].imshow(y_p_ik, cmap='gray')
         axs[ir][ik].set_xticks([])
         axs[ir][ik].set_yticks([])
         axs[ir][ik].grid(False)
@@ -67,7 +67,7 @@ def fcn_inference():
             axs[ir][ik].set_ylabel(f"Restored {net_name} image", fontsize=14)
         
         ir = 2
-        axs[ir][ik].imshow(y_ik, cmap='viridis')
+        axs[ir][ik].imshow(y_ik, cmap='gray')
         axs[ir][ik].set_xticks([])
         axs[ir][ik].set_yticks([])
         axs[ir][ik].grid(False)
@@ -81,7 +81,7 @@ def fcn_inference():
     if remote_ssh:
         plt.savefig(f"restored_{net_name}.png", format='png')
     else:
-        fig.show()
+        plt.show()
 
     print('Done')
 
