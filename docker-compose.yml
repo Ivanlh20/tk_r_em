@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  tk_r_em_app:
+    build:
+      context: .  # Specifies the Dockerfile's directory
+      dockerfile: Dockerfile
+    image: tk_r_em:cuda  # Tag name for the image
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia  # Ensures GPU support with NVIDIA
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - .:/app  # Mounts the current directory into the container at /app

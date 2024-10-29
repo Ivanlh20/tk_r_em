@@ -1,0 +1,12 @@
+FROM tensorflow/tensorflow:2.14.0
+
+
+RUN apt-get update --fix-missing && \
+    apt-get install -y wget bzip2 ca-certificates curl git libfftw3-dev python3 pip && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install required packages
+RUN pip install --upgrade pip && \
+    git clone https://github.com/Ivanlh20/tk_r_em.git /tk_r_em && \
+    pip install -e /tk_r_em
