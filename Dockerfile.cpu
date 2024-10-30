@@ -9,6 +9,5 @@ RUN apt-get update --fix-missing && \
 RUN ln -sf $(which python3) /usr/bin/python
 
 # Upgrade pip and install required packages
-RUN pip install --upgrade pip && \
-    git clone https://github.com/Ivanlh20/tk_r_em.git /tk_r_em && \
+RUN git clone https://github.com/Ivanlh20/tk_r_em.git /tk_r_em && \
     pip install -e /tk_r_em
