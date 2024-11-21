@@ -49,6 +49,18 @@ Below are the quick versions of the installation commands. For detailed instruct
 	python -m pip install tensorflow-cpu==2.10.* tk_r_em
 	```
 
+### Docker
+Docker provides an isolated environment, known as a container, where applications can run consistently across different platforms. Further details can be found in this [guide](docker/docker_guide.md).
+1. **Run with CUDA (GPU Support)**:
+   ```bash
+   docker run -it --rm -v path_to_local_folder:/data --gpus all dreamleadsz/tk_r_em:cuda
+   ```
+
+2. **Run with CPU Only**:
+   ```bash
+   docker run -it --rm -v path_to_local_folder:/data dreamleadsz/tk_r_em:cpu
+   ```
+
 ## Step-by-Step Install
 Below are the step-by-step instructions for installing the package with and without GPU support.
 
