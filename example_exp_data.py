@@ -8,7 +8,7 @@ import os
 import matplotlib
 
 # Check if running on remote SSH and use appropriate backend for matplotlib
-remote_ssh = True
+remote_ssh = "SSH_CONNECTION" in os.environ
 matplotlib.use('Agg' if remote_ssh else 'TkAgg')
 import matplotlib.pyplot as plt
 
