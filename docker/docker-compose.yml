@@ -1,0 +1,19 @@
+services:
+  tk_r_em_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.cuda
+    image: tk_r_em:cuda
+    container_name: tk_r_em_app
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ../:/app  # Mount your host directory to /app in the container
+    tty: true  # Keeps the container alive for debugging or interactive shells
