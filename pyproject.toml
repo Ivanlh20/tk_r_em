@@ -19,7 +19,7 @@ dependencies = [
     "Pillow",
     "streamlit",
     "streamlit-image-comparison",
-    "rosettasciio",
+    "rosettasciio>=0.13",
 ]
 
 [project.optional-dependencies]

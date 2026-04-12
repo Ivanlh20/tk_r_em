@@ -24,12 +24,13 @@ def _load_pil(file_obj):
 
 def _load_em_format(file_obj, ext):
     """Load SER/DM3/DM4 via rosettasciio, writing to temp file first."""
-    import rosettasciio
+    from rsciio.tia import file_reader as _ser_reader
+    from rsciio.digitalmicrograph import file_reader as _dm_reader
 
     readers = {
-        '.ser': rosettasciio.ser.file_reader,
-        '.dm3': rosettasciio.dm3.file_reader,
-        '.dm4': rosettasciio.dm4.file_reader,
+        '.ser': _ser_reader,
+        '.dm3': _dm_reader,
+        '.dm4': _dm_reader,
     }
     reader = readers[ext]
 
