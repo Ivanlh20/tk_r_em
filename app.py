@@ -220,39 +220,37 @@ with main:
             display_width = st.slider("Display width (px)", 256, 3080,
                                       value=min(auto_width, 1200), step=50)
 
-            c_left, c_center, c_right = st.columns([1, 2, 1])
-            with c_center:
-                if not flip_active:
-                    from streamlit_image_comparison import image_comparison
-                    image_comparison(
-                        img1=raw_uint8,
-                        img2=restored_uint8,
-                        label1="Original",
-                        label2="Restored",
-                        starting_position=50,
-                        show_labels=True,
-                        make_responsive=True,
-                        in_memory=True,
-                        width=display_width,
-                    )
+            if not flip_active:
+                from streamlit_image_comparison import image_comparison
+                image_comparison(
+                    img1=raw_uint8,
+                    img2=restored_uint8,
+                    label1="Original",
+                    label2="Restored",
+                    starting_position=50,
+                    show_labels=True,
+                    make_responsive=False,
+                    in_memory=True,
+                    width=display_width,
+                )
 
-                else:
-                    @st.fragment
-                    def display_loop(img_res, img_raw, width_px, interval):
-                        if "flip_phase" not in st.session_state:
-                            st.session_state["flip_phase"] = 0
-                        st.session_state["flip_phase"] = 1 - st.session_state["flip_phase"]
+            else:
+                @st.fragment
+                def display_loop(img_res, img_raw, width_px, interval):
+                    if "flip_phase" not in st.session_state:
+                        st.session_state["flip_phase"] = 0
+                    st.session_state["flip_phase"] = 1 - st.session_state["flip_phase"]
 
-                        if st.session_state["flip_phase"] == 1:
-                            current_img, caption = img_raw, "Original"
-                        else:
-                            current_img, caption = img_res, "Restored"
+                    if st.session_state["flip_phase"] == 1:
+                        current_img, caption = img_raw, "Original"
+                    else:
+                        current_img, caption = img_res, "Restored"
 
-                        st.image(current_img, width=width_px, caption=caption, clamp=False)
-                        time.sleep(interval)
-                        st.rerun()
+                    st.image(current_img, width=width_px, caption=caption, clamp=False)
+                    time.sleep(interval)
+                    st.rerun()
 
-                    display_loop(restored_uint8, raw_uint8, display_width, flip_time_val)
+                display_loop(restored_uint8, raw_uint8, display_width, flip_time_val)
 
         else:
             # No prediction yet — small centred preview
