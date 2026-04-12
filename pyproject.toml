@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tk-r-em"
+version = "2.0.0"
+description = "Deep convolutional neural networks to restore single-shot electron microscopy images"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [
+    { name = "Ivan Lobato", email = "ivan.lobato@neuralsoftx.com" },
+]
+urls = { Repository = "https://github.com/Ivanlh20/tk_r_em" }
+dependencies = [
+    "numpy",
+    "h5py",
+    "matplotlib",
+    "Pillow",
+    "streamlit",
+    "streamlit-image-comparison",
+    "rosettasciio",
+]
+
+[project.optional-dependencies]
+cpu = ["onnxruntime>=1.21"]
+gpu = [
+    "onnxruntime-gpu>=1.21",
+    "nvidia-cudnn-cu12>=9.0",
+    "nvidia-cuda-runtime-cu12>=12.0",
+    "nvidia-cublas-cu12",
+    "nvidia-cufft-cu12",
+    "nvidia-curand-cu12",
+    "nvidia-cusolver-cu12",
+    "nvidia-cusparse-cu12",
+]
+directml = ["onnxruntime-directml>=1.21; sys_platform == 'win32'"]
+notebook = [
+    "ipykernel",        # run cells in VSCode / Jupyter
+    "tqdm",             # workshop notebook: video progress bar
+    "imageio",          # workshop notebook: video I/O
+    "imageio-ffmpeg",   # workshop notebook: mp4 reading / writing
+    "scikit-image",     # intro notebook: SSIM metric
+]
+
+[tool.setuptools.packages.find]
+include = ["tk_r_em*"]
+
+[tool.setuptools.package-data]
+tk_r_em = ["models/*.onnx", "test_data/*.h5"]

@@ -1,439 +1,326 @@
-This GitHub repository offers a versatile and comprehensive collection of deep learning models that are specifically designed to restore and enhance various electron microscopy modalities. Developed by Ivan Lobato (Ivanlh20@gmail.com), these models provide an all-in-one solution for researchers, engineers, and electron microscopy enthusiasts who want to leverage the latest neural network technology to improve the quality of their electron microscopy images.
-
 # Deep convolutional neural networks to restore single-shot electron microscopy images
-I.Lobato<sup>1,2</sup>, T. Friedrich<sup>1,2</sup>, S. Van Aert<sup>1,2</sup>
 
-<sup>1</sup>EMAT, University of Antwerp, Department of Physics, Groenenborgerlaan 171, B-2020 Antwerp, Belgium
+I. Lobato¹², T. Friedrich¹², S. Van Aert¹²
 
-<sup>2</sup>NANOlab Center of Excellence, University of Antwerp, Department of Physics, Groenenborgerlaan 171, B-2020 Antwerp, Belgium
+¹ EMAT, University of Antwerp, Department of Physics, Groenenborgerlaan 171, B-2020 Antwerp, Belgium
+
+² NANOlab Center of Excellence, University of Antwerp, Department of Physics, Groenenborgerlaan 171, B-2020 Antwerp, Belgium
 
 Paper: https://www.nature.com/articles/s41524-023-01188-0
 
 ## Overview
-State-of-the-art electron microscopes such as scanning electron microscopes (SEM), scanning transmission electron microscopes (STEM) and transmission electron microscopes (TEM) have become increasingly sophisticated. However, the quality of experimental images is often hampered by stochastic and deterministic distortions arising from the instrument or its environment. These distortions can arise during any stage of the imaging process, including image acquisition, transmission, or visualization. In this paper, we will discuss the main sources of distortion in TEM and S(T)EM images, develop models to describe them and propose a method to correct these distortions using a convolutional neural network. We demonstrate the effectiveness of our approach on a variety of experimental images and show that it can significantly improve the signal-to-noise ratio resulting in an increase in the amount of quantitative structural information that can be extracted from the image. Overall, our findings provide a powerful framework for improving the quality of electron microscopy images and advancing the field of structural analysis and quantification in materials science and biology. The source code and trained models for our approach are made available in the accompanying repository.
 
-One of the main advantages of our image restoration method is that the training data is generated using realistic physical models of the noise found in various microscopy modalities, as well as for an appropriate range of values for the noise model parameters.  This methodology allows for the direct application of our network to experimental data, without requiring additional training for a particular specimen or microscope settings
+**tk_r_em** provides six pre-trained deep learning models that restore and enhance single-shot electron microscopy images across three modalities — SEM, STEM, and TEM — at both high and low resolution. The models ship as lightweight ONNX files and run on CPU, NVIDIA GPU, or DirectML (AMD/Intel/Qualcomm on Windows) with no TensorFlow dependency.
+
+| Tag            | Modality | Resolution |
+| -------------- | -------- | ---------- |
+| `sfr_hrsem`  | SEM      | High       |
+| `sfr_lrsem`  | SEM      | Low        |
+| `sfr_hrstem` | STEM     | High       |
+| `sfr_lrstem` | STEM     | Low        |
+| `sfr_hrtem`  | TEM      | High       |
+| `sfr_lrtem`  | TEM      | Low        |
 
 ![](images/em_restoration.png)
-Figure 1. Experimental image restoration for various microscopy modalities. The top row illustrates the raw experimental images, while the bottom row displays the restored versions
+*Figure 1. Experimental image restoration for various microscopy modalities. Top row: raw experimental images. Bottom row: restored versions.*
 
-# Installation via Pip
-## Quick install
-Below are the quick versions of the installation commands. For detailed instructions, please refer to the section below.
+## Scientific motivation
 
-### Linux
+### The problem: distortions in electron microscopy
 
-- **GPU support**
+Advanced electron microscopy techniques — SEM, STEM, and TEM — have revolutionised imaging capabilities, yet achieving high-quality experimental images remains a challenge due to various distortions stemming from the instrumentation and external factors. These distortions are introduced at different stages of the imaging process and hinder the extraction of reliable quantitative insights.
 
-	```bash
-	pip install --upgrade pip
-	pip install tensorflow[and-cuda]==2.14.1
-	pip install tk_r_em
-	```
+In **TEM**, the dominant sources of degradation include specimen damage from high-energy electron beams and noise introduced during image acquisition and transmission. In **SEM** images, surface condition and detector characteristics affect the achievable signal-to-noise ratio. **STEM** images are particularly susceptible to scan distortions — two-dimensional random displacements of pixel rows caused by environmental vibrations and electrical instabilities — as well as severe noise arising from the sequential nature of pixel-by-pixel data collection. Across all modalities, the detector itself introduces noise that depends on the detector type, beam current, and experimental conditions.
 
-- **CPU-only support**
-	```bash
-	pip install tensorflow-cpu==2.14.1.* tk_r_em
-	```
+The standard approach for improving signal-to-noise is to average a series of sequential images; however, this requires considerable beam time and may increase cumulative specimen damage. Alternative techniques such as Wiener filtering or BM3D denoising can reduce noise but may introduce artefacts or fail to recover fine structural detail.
 
-### Windows
-- **GPU support**
-	```bash
-	conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
-	mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-	echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
-	python -m pip install tensorflow==2.10.* tk_r_em
-	```
-- **CPU-only support**
-	```bash
-	python -m pip install tensorflow-cpu==2.10.* tk_r_em
-	```
+### Our approach: physics-based training with deep learning
 
-### Docker
-Docker provides an isolated environment, known as a container, where applications can run consistently across different platforms. Further details can be found in this [guide](docker/docker_guide.md).
-1. **Run with CUDA (GPU Support)**:
-   ```bash
-   docker run -it --rm -v path_to_local_folder:/data --gpus all dreamleadsz/tk_r_em:cuda
-   ```
+We develop a **deep convolutional neural network** approach to restore single-shot EM images, eliminating the need for multi-frame averaging. The key innovation is a realistic synthetic training pipeline: all training data is generated using physical models of the noise found in each microscopy modality, implemented through the [MULTEM](https://github.com/Ivanlh20/MULTEM) multislice simulator. The noise chain faithfully reproduces detector noise, shot noise, dark current, thermal noise, fast-scan distortions, and quantisation artefacts for a comprehensive range of parameter values.
 
-2. **Run with CPU Only**:
-   ```bash
-   docker run -it --rm -v path_to_local_folder:/data dreamleadsz/tk_r_em:cpu
-   ```
+This physics-based methodology allows the network to capitalise on the specific feature distribution of each modality during training, enabling direct application to experimental data from any microscope **without requiring retraining** for a particular specimen or instrument setting.
 
-## Step-by-Step Install
-Below are the step-by-step instructions for installing the package with and without GPU support.
+### Architecture
 
-To utilize **tk_r_em**, you'll need to install TensorFlow. If you plan to use GPU acceleration, the installation of CUDA libraries is also necessary. The required version of TensorFlow for **tk_r_em** varies depending on your operating system. We recommend installing TensorFlow within a virtual environment to prevent conflicts with other packages.
+Each of the six networks uses a **Concatenated Grouped Residual Dense Network (CGRDN)** generator — a compact architecture with only 7.04M parameters (seven times fewer than comparable architectures such as MR-UNET) — paired with a relativistic PatchGAN discriminator. Training employs an 11-loss basket combining L1, multi-level wavelet transform (MLWT), FFT-based spectral, mean, standard deviation, gradient, and adversarial losses to jointly optimise pixel-level fidelity, perceptual quality, and structural similarity.
 
-## 1. Install Miniconda and create an environment
-[miniconda](https://docs.conda.io/en/latest/miniconda.html) is the recommended approach for installing TensorFlow with GPU support. It creates a separate environment to avoid changing any installed software in your system. This is also the easiest way to install the required software especially for the GPU setup.
+### Results
 
-Let us start by creating a new conda environment and activate it with the following command:
-```bash
-conda create -n py310_gpu python=3.10.*
-conda activate py310_gpu
-```
+Validation on both simulated and experimental data demonstrates that the networks significantly enhance the signal-to-noise ratio, outperforming the widely-used BM3D algorithm by a margin of 6.51 dB on the validation dataset. This improvement leads to a more reliable extraction of quantitative structural information, enabling:
 
-## 2. Setting up GPU (optional)
-If you plan to run TensorFlow on a GPU, you'll need to install the [NVIDIA GPU driver](https://www.nvidia.com/Download/index.aspx). You can use the following command to verify it is installed.
-```bash
-    nvidia-smi
-```
-TensorFlow requires a recent version of pip, so upgrade your pip installation to be sure you're running the latest version.
-```bash
-    pip install --upgrade pip
-```
-### **Windows**
-For TensorFlow version 2.10.* on Windows, which was the last TensorFlow release to support GPU on native Windows, you can install the NVIDIA GPU driver and then install the following specific version of CUDA and cuDNN using Conda:
+- Accurate determination of atomic column positions with sub-angstrom precision
+- Reliable extraction of scattering cross-sections at atomic resolution
+- Precise measurement of specimen thickness from single-shot images
+- Consistent enhancement across diverse material systems, including crystalline structures, precipitates, and amorphous materials
+
+# Installation
+
+Install inside a virtual environment to keep tk_r_em's dependencies isolated. Two environment managers are supported:
+
+- **venv** — built into Python, no additional install required.
+- **conda / miniconda** — a cross-platform package and environment manager. If you do not have it installed, download [Miniconda](https://docs.conda.io/en/latest/miniconda.html) — a minimal installer that bundles Python and conda — for your platform first.
+
+Start by cloning the repository (once, regardless of backend):
 
 ```bash
-conda install -c conda-forge cudatoolkit=11.2.* cudnn=8.1.*
+git clone https://github.com/Ivanlh20/tk_r_em.git
+cd r_em/tk_r_em
 ```
 
-To ensure that the system paths recognize CUDA when your environment is activated, you can run the following commands:
+## Create and activate a virtual environment
+
+Pick whichever you prefer; both produce an isolated Python 3.10 environment.
+
+<details open>
+<summary><strong>venv</strong> (built-in Python)</summary>
 
 ```bash
-mkdir -p $CONDA_PREFIX/etc/conda/activate.d
-echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+python -m venv tk_r_em
+source tk_r_em/bin/activate   # Windows: tk_r_em\Scripts\activate
+pip install --upgrade pip
 ```
-These commands create a shell script in the activate.d directory, which sets the LD_LIBRARY_PATH environment variable when your environment is activated. This allows TensorFlow to locate the CUDA libraries that it needs to run on the GPU.
+</details>
 
-## 3. Install Tensorflow
-After installing the CUDA libraries, you can install TensorFlow. The required version of TensorFlow varies depending on your operating system.
+<details>
+<summary><strong>conda / miniconda</strong></summary>
 
-### **Linux**
-On Linux, install TensorFlow version 2.14.1.* using pip:
-
-- **GPU support**
-    ```bash
-    pip install tensorflow[and-cuda]==2.14.1
-    ```
-
-- **CPU-only support**
-	```bash
-	pip install tensorflow-cpu==2.14.1.*
-	```
-
-Note that running on CPU may be slower than running on a GPU, but it should still be functional.
-
-### **Windows**
-On Windows, the last version of TensorFlow that supported GPU on native Windows was 2.10.*. Starting with TensorFlow 2.11, you'll need to install TensorFlow in WSL2 or install tensorflow-cpu instead.
-
-- **GPU support**
-	```bash
-	pip install tensorflow==2.10.*
-	```
-
-- **CPU-only support**
-	```bash
-	pip install tensorflow-cpu==2.10.*
-	```
-
-With these installations, you should now have TensorFlow set up with GPU support (if applicable).
-
-## 4. Install tk_r_em
-
-### Option 1: Install from PIP
-After installing TensorFlow, you can install **tk_r_em** using pip:
 ```bash
-pip install tk_r_em
+conda create -n tk_r_em python=3.10 -y
+conda activate tk_r_em
 ```
+</details>
 
-This command will install the latest version of **tk_r_em** and its required dependencies.
+> **Want CPU and GPU side by side?** Suffix the env name (`tk_r_em_cpu`, `tk_r_em_gpu`, `tk_r_em_directml`) and create one env per backend — the three `onnxruntime` builds install into the same Python package directory and cannot coexist in a single environment.
 
-## Option 2: Install from Git-Clone
-This option is ideal if you want to edit the code. Clone the repository:
+## Install the runtime
+
+Pick **one** ONNX Runtime build for your hardware.
+
+### CPU (Linux, Windows, macOS)
+
 ```bash
-$ git clone https://github.com/Ivanlh20/r_em.git
+pip install -e ".[cpu]"
 ```
 
-Then, change into its directory and install it using pip:
+Works identically on Linux, Windows, and macOS (Intel and Apple Silicon). Pulls in the CPU-only `onnxruntime` build.
+
+### NVIDIA GPU (Linux, Windows)
+
+Prerequisite: a recent NVIDIA driver (check with `nvidia-smi`).
+
 ```bash
-pip install -e .
+pip install -e ".[gpu]"
 ```
 
-You are now ready to run **tk_r_em**.
+This installs `onnxruntime-gpu` **plus** the NVIDIA CUDA 12.x / cuDNN 9.x pip wheels into the same environment. tk_r_em calls `onnxruntime.preload_dlls()` at import time, so the wheel-installed libraries are dlopen'd before any ONNX session is created — no `LD_LIBRARY_PATH` fiddling required.
 
-## 5. Python examples
-Electron microscopy techniques, such as Scanning Electron Microscopy (SEM), Scanning Transmission Electron Microscopy (STEM), and Transmission Electron Microscopy (TEM), exhibit unique sources of noise and feature variations across both low and high resolutions. Consequently, we have trained our network architecture on six diverse datasets, encompassing low-resolution (LR) and high-resolution (HR) images for each microscopy modality. Our results demonstrate that optimal performance is attained by training separate networks for LR and HR features, particularly at low doses, where the network can capitalize on the specific feature distribution acquired during the training phase.
+If you are upgrading an existing CPU-only environment, remove the CPU wheel first (the two builds install into the same package directory and cannot coexist):
 
-You may now incorporate **tk_r_em** into your Python code.
+```bash
+pip uninstall -y onnxruntime
+pip install --upgrade ".[gpu]"
+```
 
-- **The first example demonstrates the application of restoration on simulated data:**
+### AMD / Intel / Qualcomm GPU on Windows (DirectML)
 
-    ```python
-    import os
-    import matplotlib
+Windows users who do not have an NVIDIA GPU can use the **DirectML execution provider**, which targets any DirectX 12 capable device — AMD Radeon, Intel Arc/UHD/Iris, NVIDIA GeForce, and Qualcomm Adreno GPUs released in the last several years.
 
-    # Check if running on remote SSH and use appropriate backend for matplotlib
-    remote_ssh = "SSH_CONNECTION" in os.environ
-    matplotlib.use('Agg' if remote_ssh else 'TkAgg')
-    import matplotlib.pyplot as plt
+```bash
+pip install -e ".[directml]"
+```
 
-    def fcn_set_gpu_id(gpu_visible_devices: str = "0") -> None:
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_visible_devices
+This installs `onnxruntime-directml`. tk_r_em auto-detects the DirectML provider at import time and sets the two session options DirectML requires (`enable_mem_pattern=False`, `ORT_SEQUENTIAL` execution) — no manual configuration needed.
 
-    fcn_set_gpu_id("0")
+Pinning a specific DX12 adapter is done from Windows' **Settings → System → Display → Graphics** panel; ORT does not respect `CUDA_VISIBLE_DEVICES` for DirectML.
 
-    from tk_r_em import load_network, load_sim_test_data
+> **⚠️ Untested on AMD hardware.** The DirectML code path is wired into tk_r_em and the NVIDIA / CPU paths are regression-tested, but the maintainers have no AMD GPU on hand to validate DirectML end-to-end. Confirmed working reports (or issues) are welcome at [https://github.com/Ivanlh20/tk_r_em/issues](https://github.com/Ivanlh20/tk_r_em/issues).
 
-    def fcn_inference():
-        """
-        Perform inference on test data using a pre-trained model and visualize the results.
-        """
-        # select one of the available networks from [sfr_hrsem, sfr_lrsem, sfr_hrstem, sfr_lrstem, sfr_hrtem, sfr_lrtem]
-        net_name = 'sfr_hrstem'
-        
-        # load its corresponding data
-        x, y = load_sim_test_data(net_name)
+> **Linux AMD support.** ROCm and MIGraphX are not exposed by tk_r_em. A `[gpu-amd-linux]` extra is on the roadmap.
 
-        # load its corresponding model
-        r_em_nn = load_network(net_name)
-        r_em_nn.summary()
+## Why do I have to pick `[cpu]`, `[gpu]`, or `[directml]`?
 
-        n_data = x.shape[0]
-        batch_size = 8
+The three ONNX Runtime builds — `onnxruntime`, `onnxruntime-gpu`, and `onnxruntime-directml` — all install into the **same** Python package directory and cannot coexist. tk_r_em therefore does not hard-depend on any of them; you must pick exactly one extra. Plain `pip install -e .` succeeds but raises a clear `ImportError` at first import, listing the extras you can choose from.
 
-        # run inference
-        y_p = r_em_nn.predict(x, batch_size)
+Verify that the expected execution provider is visible:
 
-        fig, axs = plt.subplots(3, n_data, figsize=(48, 6))
+```python
+import tk_r_em                    # triggers ort.preload_dlls() internally
+import onnxruntime as ort
+print(ort.get_available_providers())
+# NVIDIA GPU build:
+# ['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+# DirectML build:
+# ['DmlExecutionProvider', 'CPUExecutionProvider']
+# CPU build:
+# ['CPUExecutionProvider']
+```
 
-        for ik in range(n_data):
-            x_ik = x[ik, :, :, 0].squeeze()
-            y_p_ik = y_p[ik, :, :, 0].squeeze()
-            y_ik = y[ik, :, :, 0].squeeze()
+tk_r_em picks CUDA → DirectML → CPU in that order at session-creation time and falls back silently if the first choice is unavailable (e.g. `CUDA_VISIBLE_DEVICES=-1`, no DX12 adapter). The `.summary()` method prints the **resolved** device — `cuda`, `directml`, or `cpu` — so you can confirm what is running. To pin a specific NVIDIA GPU, set `CUDA_VISIBLE_DEVICES` **before** importing tk_r_em; to force CPU, set it to `-1`:
 
-            ir = 0
-            axs[ir][ik].imshow(x_ik, cmap='viridis')
-            axs[ir][ik].set_xticks([])
-            axs[ir][ik].set_yticks([])
-            axs[ir][ik].grid(False)
-            
-            if ik == 0:
-                axs[ir][ik].set_ylabel(f"Detected {net_name} image", fontsize=14, )
+```python
+import os
+os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"   # or "-1" to force CPU
+from tk_r_em import load_network
+```
 
-            ir = 1
-            axs[ir][ik].imshow(y_p_ik, cmap='viridis')
-            axs[ir][ik].set_xticks([])
-            axs[ir][ik].set_yticks([])
-            axs[ir][ik].grid(False)
+| Platform                                  | CPU       | NVIDIA GPU              | Other GPUs                                                                         |
+| ----------------------------------------- | --------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| **Linux**                           | supported | CUDA —`tk_r_em[gpu]` | not yet (ROCm/MIGraphX on roadmap)                                                 |
+| **Windows**                         | supported | CUDA —`tk_r_em[gpu]` | DirectML —`tk_r_em[directml]` (any DX12 GPU; **untested by maintainers**) |
+| **macOS** (Intel and Apple Silicon) | supported | n/a                     | CPU only                                                                           |
 
-            if ik == 0:
-                axs[ir][ik].set_ylabel(f"Restored {net_name} image", fontsize=14)
-            axs[ir][ik].set_title(f'{ik}', fontsize=8)
-            
-            ir = 2
-            axs[ir][ik].imshow(y_ik, cmap='viridis')
-            axs[ir][ik].set_xticks([])
-            axs[ir][ik].set_yticks([])
-            axs[ir][ik].grid(False)
+<details>
+<summary><strong>Troubleshooting</strong></summary>
 
-            if ik == 0:
-                axs[ir][ik].set_ylabel(f"Ground truth {net_name} image", fontsize=14)
+| Symptom                                                                     | Cause                                                                    | Fix                                                                                                              |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `.summary()` prints `Device: cpu` on a GPU machine                      | Both `onnxruntime` and `onnxruntime-gpu` installed — CPU wins       | `pip uninstall -y onnxruntime && pip install --force-reinstall --no-deps onnxruntime-gpu`                      |
+| `libcudnn.so.9: cannot open shared object file`                           | cuDNN 9 missing or not on linker path                                    | Reinstall via `pip install ".[gpu]"`; make sure `preload_dlls()` runs (tk_r_em ≥ 2.0)                       |
+| `Failed to create CUDAExecutionProvider. Require cuDNN 9.* and CUDA 12.*` | Mismatched runtime (e.g. cuDNN 8, CUDA 11)                               | `pip install "nvidia-cudnn-cu12>=9.0" "nvidia-cuda-runtime-cu12>=12.0"`                                        |
+| DirectML:`.summary()` prints `Device: cpu` on Windows                   | A CPU or GPU `onnxruntime` wheel is shadowing `onnxruntime-directml` | `pip uninstall -y onnxruntime onnxruntime-gpu && pip install --force-reinstall --no-deps onnxruntime-directml` |
+| DirectML:`DirectMLExecutionProvider is not in available providers`        | Not on Windows, or wrong wheel                                           | DirectML is**Windows only**. Install with `pip install ".[directml]"`                                    |
 
-        fig.subplots_adjust(hspace=2, wspace=10)
-        fig.tight_layout()
-        
-        if remote_ssh:
-            plt.savefig(f"restored_{net_name}.png", format='png')
-        else:
-            fig.show()
+</details>
 
-        print(ik)
+## Install from a local clone
 
-    if __name__ == '__main__':
-        fcn_inference()
-    ```
+Ideal if you want to edit the code. After cloning (see above), install in editable mode:
 
-    The above function in the code loads pre-trained neural networks corresponding to various electron microscopy techniques, including High-Resolution Scanning Electron Microscopy (HRSEM), Low-Resolution Scanning Electron Microscopy (LRSEM), High-Resolution Scanning Transmission Electron Microscopy (HRSTEM), Low-Resolution Scanning Transmission Electron Microscopy (LRSTEM), High-Resolution Transmission Electron Microscopy (HRTEM), and Low-Resolution Transmission Electron Microscopy (LRTEM). The function then loads test data for each of the networks and runs inference on the data using the corresponding neural network.
+```bash
+pip install -e ".[cpu]"      # or .[gpu] / .[directml]
+```
 
-    Figures 2 and 3 display the output images produced by the code using the pre-trained networks for HRSTEM and LRSTEM, respectively.
+## Running the bundled notebooks
 
-    ![](images/hrstem.png)
-    Figure 2 displays simulated images that closely resemble those obtained through High-Resolution Scanning Transmission Electron Microscopy (HRSTEM). The first row depicts the input images, the second row exhibits the restored images, and the third row row the ground truth images.
+The [`notebooks/`](notebooks/) and [`workshop_29_10_2024/`](workshop_29_10_2024/) directories ship two tutorial notebooks that pull in a few additional packages (`ipykernel`, `imageio`, `imageio-ffmpeg`, `tqdm`, `scikit-image`). To run them, combine the `[notebook]` extra with one of the runtime extras:
 
-    ![](images/lrstem.png)
-    Figure 3 illustrates simulated images that closely resemble those obtained through Low-Resolution Scanning Transmission Electron Microscopy (LRSTEM). The first row depicts the input images, the second row exhibits the restored images, and the third row displays the ground truth images.
+```bash
+pip install -e ".[cpu,notebook]"      # or .[gpu,notebook] / .[directml,notebook]
+```
 
-- **The second example demonstrates the application of restoration on experimental HRSTEM data:**
+API-only users can skip this — the core `tk_r_em` package does not depend on any of these packages.
 
-    ```python
-    import os
-    import matplotlib
+# Quick start
 
-    # Check if running on remote SSH and use appropriate backend for matplotlib
-    remote_ssh = "SSH_CONNECTION" in os.environ
-    matplotlib.use('Agg' if remote_ssh else 'TkAgg')
-    import matplotlib.pyplot as plt
+```python
+from tk_r_em import load_network, load_sim_test_data
 
-    def fcn_set_gpu_id(gpu_visible_devices: str = "0") -> None:
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_visible_devices
+net = load_network('sfr_hrstem')
+net.summary()
 
-    fcn_set_gpu_id("0")
+x, y = load_sim_test_data('sfr_hrstem')
+y_p = net.predict(x, batch_size=8)
+print(f'Input: {x.shape}  Output: {y_p.shape}')
+```
 
-    from tk_r_em import load_network, load_hrstem_exp_test_data
+For large images that do not fit in GPU memory, use patch-based inference:
 
-    def fcn_inference():
-        """
-        Perform inference on test data using a pre-trained model and visualize the results.
-        """
-        # select one of the available networks from [sfr_hrsem, sfr_lrsem, sfr_hrstem, sfr_lrstem, sfr_hrtem, sfr_lrtem]
-        net_name = 'sfr_hrstem'
-        
-        # load experimental hrstem data
-        x = load_hrstem_exp_test_data('exp_hrstem')
-            
-        # load its corresponding model
-        r_em_nn = load_network(net_name)
-        r_em_nn.summary()
+```python
+from tk_r_em import load_network, load_hrstem_exp_test_data
 
-        n_data = x.shape[0]
-        batch_size = 8
+net = load_network('sfr_hrstem')
+x = load_hrstem_exp_test_data('sgl_exp_hrstem')
+y_p = net.predict_patch_based(x, patch_size=256, stride=128, batch_size=16)
+```
 
-        # run inference
-        y_p = r_em_nn.predict(x, batch_size)
+# Python examples
 
-        fig, axs = plt.subplots(2, n_data, figsize=(48, 6))
+Four complete example scripts are included:
 
-        for ik in range(n_data):
-            x_ik = x[ik, :, :, 0].squeeze()
-            y_p_ik = y_p[ik, :, :, 0].squeeze()
+| Script                                                      | Description                                        |
+| ----------------------------------------------------------- | -------------------------------------------------- |
+| [`example_sim_data.py`](example_sim_data.py)                | Simulated data: detected / restored / ground truth |
+| [`example_exp_batch_data.py`](example_exp_batch_data.py)    | Experimental HRSTEM batch                          |
+| [`example_exp_patch_data.py`](example_exp_patch_data.py)    | Large image via patch-based inference              |
+| [`example_exp_single_data.py`](example_exp_single_data.py)  | Large image in a single forward pass               |
 
-            ir = 0
-            axs[ir][ik].imshow(x_ik, cmap='hot')
-            axs[ir][ik].set_xticks([])
-            axs[ir][ik].set_yticks([])
-            axs[ir][ik].grid(False)
-            
-            if ik == 0:
-                axs[ir][ik].set_ylabel(f"Experimental {net_name} image", fontsize=14, )
+## Example 1 — Simulated data
 
-            ir = 1
-            axs[ir][ik].imshow(y_p_ik, cmap='hot')
-            axs[ir][ik].set_xticks([])
-            axs[ir][ik].set_yticks([])
-            axs[ir][ik].grid(False)
+Source: [`example_sim_data.py`](example_sim_data.py). Loads a bundled simulated test set with `load_sim_test_data(net_name)`, which returns a pair `(x, y)` of eight 256×256 images — `x` is the distorted input produced by the physical-model simulator and `y` is the MULTEM ground truth. Inference is run with `net.predict(x, batch_size=8)`, where `batch_size` sets how many images go through the network per forward pass. Change `net_name` to any of the six modality tags (`sfr_hrsem`, `sfr_lrsem`, `sfr_hrstem`, `sfr_lrstem`, `sfr_hrtem`, `sfr_lrtem`) to swap models. The script prints total time, per-image latency, and throughput, then plots three rows — detected / restored / ground truth — so you can visually compare the network output against the reference.
 
-            if ik == 0:
-                axs[ir][ik].set_ylabel(f"Restored {net_name} image", fontsize=14)
+![](images/hrstem.png)
+*Figure 2. Simulated HRSTEM images. Top: noisy input. Middle: restored. Bottom: ground truth.*
 
-        fig.subplots_adjust(hspace=2, wspace=10)
-        fig.tight_layout()
-        
-        if remote_ssh:
-            plt.savefig(f"restored_{net_name}.png", format='png')
-        else:
-            fig.show()
+![](images/lrstem.png)
+*Figure 3. Simulated LRSTEM images. Top: noisy input. Middle: restored. Bottom: ground truth.*
 
-        print('Done')
+## Example 2 — Experimental HRSTEM batch
 
-    if __name__ == '__main__':
-        fcn_inference()
-    ```
+Source: [`example_exp_batch_data.py`](example_exp_batch_data.py). Loads a batch of five real 768×768 experimental HRSTEM images via `load_hrstem_exp_test_data('exp_hrstem')` — no ground truth is available for experimental data, so only `x` is returned. Inference runs in one call:
 
-    The above function in the code loads pre-trained neural networks and the test data corresponding High-Resolution Scanning Transmission Electron Microscopy (HRSTEM). The output images produced by the code are show in Figure 8.
+```python
+y_p = net.predict(x, batch_size=8)
+```
 
-    ![](images/exp_hrstem.png)
-    Figure 4 showcases experimental images obtained through HRSTEM. The first row displays the input images, while the second row shows the restored images. The first and second columns correspond to experimental images taken by Zezhong Zang, the third and fourth columns correspond to experimental images published in a Nature paper by Sandra Van Aert. The last column displays a low-dose experimental drift-corrected HRSTEM image of the SrTiO3 sample.
+The **`batch_size`** argument is what controls batching: `predict` internally slices the input along the leading axis and submits `batch_size` images to the ONNX session per forward pass, concatenating the results before returning. Lower `batch_size` reduces peak GPU/CPU memory at the cost of throughput; raise it when you have spare memory. The plot shows two rows — experimental input on top, restored output on the bottom — across all five images side by side.
 
-- **As a final example, we demonstrated how our network can restore a single image on a GPU with limited memory**
+![](images/exp_hrstem.png)
+*Figure 4. Experimental HRSTEM images. Top: raw experimental. Bottom: restored.*
 
-    In case you encounter a memory error while running the **r_em_nn.predict(x)** function on an image, you can try using **r_em_nn.predict_patch_based(x)** instead to restore the image. This function uses a window-based patch method, which involves dividing the image into smaller, overlapping patches and processing each patch separately.
+## Example 3 — Large experimental image (patch-based)
 
-    The window size and stride determine the size of the patches and the amount of overlap between them. By using overlapping patches, the neural network can better capture the spatial features within each patch, resulting in improved image restoration.
+Source: [`example_exp_patch_data.py`](example_exp_patch_data.py). Loads a single 2048×2048 experimental HRSTEM image via `load_hrstem_exp_test_data('sgl_exp_hrstem')`. Runs tiled inference with three parameters:
 
-    After the neural network has processed each patch, the restored image is then reconstructed by combining the individual patches. This approach allows for processing large images that may not fit into the GPU's memory, making it a useful function for restoring high-resolution images on a memory-constrained GPU.
+```python
+y_p = net.predict_patch_based(x, patch_size=256, stride=128, batch_size=16)
+```
 
-    ```python
-    import os
-    import matplotlib
+- **`patch_size=256`** — spatial size of each tile fed to the network (clamped internally to at least 128 and at most the image dimensions).
+- **`stride=128`** — step between adjacent patch centres; `128` gives 50% overlap (the default, equal to `patch_size // 2`), so neighbouring patches share half their area.
+- **`batch_size=16`** — number of patches processed per forward pass, analogous to Example 2.
 
-    # Check if running on remote SSH and use appropriate backend for matplotlib
-    remote_ssh = "SSH_CONNECTION" in os.environ
-    matplotlib.use('Agg' if remote_ssh else 'TkAgg')
-    import matplotlib.pyplot as plt
+Overlapping patches are blended with a separable 2D Butterworth window (`cutoff=0.33`, `order=4`) and normalised by a running weight map, so the seams between tiles are invisible in the output. Use this path whenever the image is larger than fits comfortably in memory, or larger than the 256×256 tiles the networks were trained on.
 
-    def fcn_set_gpu_id(gpu_visible_devices: str = "0") -> None:
-        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-        os.environ['CUDA_VISIBLE_DEVICES'] = gpu_visible_devices
+![](images/sgl_exp_hrstem.png)
+*Figure 5. Large experimental HRSTEM image. Left: original. Right: restored via patch-based inference.*
 
-    fcn_set_gpu_id("0")
+## Example 4 — Large experimental image (single forward pass)
 
-    from tk_r_em import load_network, load_hrstem_exp_test_data
+Source: [`example_exp_single_data.py`](example_exp_single_data.py). Same 2048×2048 input as Example 3, but fed through the network in one shot:
 
-    def fcn_inference():
-        """
-        Perform inference on test data using a pre-trained model and visualize the results.
-        """
-        # select one of the available networks from [sfr_hrsem, sfr_lrsem, sfr_hrstem, sfr_lrstem, sfr_hrtem, sfr_lrtem]
-        net_name = 'sfr_hrstem'
-        
-        # load experimental hrstem data
-        x = load_hrstem_exp_test_data('sgl_exp_hrstem')
-            
-        # load its corresponding model
-        r_em_nn = load_network(net_name)
-        r_em_nn.summary()
+```python
+y_p = net.predict(x)
+```
 
-        # run inference
-        y_p = r_em_nn.predict_patch_based(x, patch_size=256, stride=128, batch_size=16)
+No `patch_size`, no `stride`, no tiling — the whole image is pushed through the ONNX session as a single `(1, 2048, 2048, 1)` tensor. This is simpler and marginally faster than Example 3 (no blending arithmetic), but it requires enough GPU/CPU memory to hold the full image plus activations; at 2048×2048 you will need roughly an order of magnitude more peak memory than the patch-based path. The result is visually indistinguishable from the patch-based output in Figure 5, which confirms that the Butterworth-windowed tiling in Example 3 does not introduce seam artefacts — the two routes are interchangeable up to memory constraints.
 
-        fig, axs = plt.subplots(1, 2, figsize=(48, 6))
-        ir = 0
-        axs[ir].imshow(x, cmap='hot')
-        axs[ir].set_xticks([])
-        axs[ir].set_yticks([])
-        axs[ir].grid(False)
-        axs[ir].set_title(f"Experimental {net_name} image", fontsize=14, )
+![](images/sgl_exp_hrstem.png)
+*Figure 6. Same large experimental HRSTEM image as Example 3, restored in a single forward pass. Left: original. Right: restored. The output is visually indistinguishable from the patch-based result in Figure 5, confirming that the Butterworth-windowed tiling produces seamless reconstructions.*
 
-        ir = 1
-        axs[ir].imshow(y_p, cmap='hot')
-        axs[ir].set_xticks([])
-        axs[ir].set_yticks([])
-        axs[ir].grid(False)
-        axs[ir].set_title(f"Restored {net_name} image", fontsize=14)
+# Streamlit web app
 
-        fig.subplots_adjust(hspace=2, wspace=10)
-        fig.tight_layout()
-        
-        if remote_ssh:
-            plt.savefig(f"restored_{net_name}.png", format='png')
-        else:
-            fig.show()
+An interactive web UI for drag-and-drop image restoration:
 
-        print('Done')
+```bash
+pip install -e ".[cpu]"   # or [gpu] / [directml]
+streamlit run app.py
+```
 
-    if __name__ == '__main__':
-        fcn_inference()
-    ```
-    ![](images/sgl_exp_hrstem.png)
-    Figure 5 showcases an HRSTEM experimental image and its restored version obtained by using the window-patch-based prediction method. The left column displays the original experimental HRSTEM image taken by Zezhong Zang, while the right column shows the restored image.
+Upload an EM image (PNG, TIF, SER, DM3, DM4), select a model and inference mode (whole-image or patch-based), then click **Restore**. Results are shown in a comparison slider (drag to reveal original vs. restored) or flip mode (toggle between frames at a configurable interval).
 
-## 5. Performance
-All models of **tk_r_em** have been optimized to run efficiently on a standard desktop computer. However, for faster performance, you can utilize GPU acceleration.
+![](images/app.png)
+*Figure 7. EM Image Restoration Studio — comparison slider showing original (left) and restored (right) HRSTEM image.*
 
-## 6. How to cite:
+# Performance
+
+All models are optimised to run efficiently on a standard desktop computer. GPU acceleration provides a significant speed-up — typical inference times on a modern NVIDIA GPU are a few milliseconds per 256x256 image.
+
+# How to cite
+
 **Please cite tk_r_em in your publications if it helps your research:**
 
 ```bibtex
 @article{Lobato2024,
-   author = {I. Lobato and T. Friedrich and S. Van Aert},
-   doi = {10.1038/s41524-023-01188-0},
-   issn = {2057-3960},
-   issue = {1},
-   journal = {npj Computational Materials 2024 10:1},
-   keywords = {Imaging techniques,Transmission electron microscopy},
-   month = {1},
-   pages = {1-19},
-   publisher = {Nature Publishing Group},
-   title = {Deep convolutional neural networks to restore single-shot electron microscopy images},
-   volume = {10},
-   url = {https://www.nature.com/articles/s41524-023-01188-0},
-   year = {2024},
+   author  = {I. Lobato and T. Friedrich and S. Van Aert},
+   doi     = {10.1038/s41524-023-01188-0},
+   issn    = {2057-3960},
+   issue   = {1},
+   journal = {npj Computational Materials},
+   title   = {Deep convolutional neural networks to restore single-shot electron microscopy images},
+   volume  = {10},
+   pages   = {1-19},
+   url     = {https://www.nature.com/articles/s41524-023-01188-0},
+   year    = {2024},
 }
-
 ```

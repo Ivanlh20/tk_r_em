@@ -1,0 +1,14 @@
+# Runtime dependencies are declared in pyproject.toml.
+# Install one ONNX Runtime backend:
+#   pip install ".[cpu]"        # portable CPU-only (Linux/Windows/macOS)
+#   pip install ".[gpu]"        # NVIDIA GPU via CUDA 12/cuDNN 9 wheels (Linux/Windows)
+#   pip install ".[directml]"   # any DirectX 12 GPU on Windows
+# To also run the bundled tutorial notebooks, combine with the notebook extra:
+#   pip install ".[cpu,notebook]"
+numpy
+h5py
+matplotlib
+Pillow
+streamlit
+streamlit-image-comparison
+rosettasciio

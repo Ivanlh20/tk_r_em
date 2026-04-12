@@ -1,259 +1,318 @@
-"""
-r_em network suites designed to restore different modalities of electron microscopy data
+# Copyright 2026 Ivan Lobato / NeuralSoftX
+# SPDX-License-Identifier: Apache-2.0
+"""ONNX-based inference for r_em electron microscopy image restoration networks.
 
 Author: Ivan Lobato
-Email: Ivanlh20@gmail.com
+Email: ivan.lobato@neuralsoftx.com
 """
+
 import os
 import pathlib
-from typing import Tuple
 
 import h5py
 import numpy as np
-import tensorflow as tf
+try:
+    import onnxruntime as ort
+except ImportError as _e:
+    raise ImportError(
+        "tk_r_em requires ONNX Runtime, which is not installed. Pick one of:\n"
+        "    pip install tk_r_em[cpu]        # portable CPU-only (Linux/Windows/macOS)\n"
+        "    pip install tk_r_em[gpu]        # NVIDIA GPU (Linux/Windows)\n"
+        "    pip install tk_r_em[directml]   # any DirectX 12 GPU on Windows\n"
+        "Do NOT install both `onnxruntime` and `onnxruntime-gpu` in the same "
+        "environment — they conflict and the CPU wheel silently wins at import."
+    ) from _e
 
-def expand_dimensions(x):
+
+# ---------------------------------------------------------------------------
+# Preload NVIDIA CUDA wheels so that ORT can dlopen them at session creation.
+# Only meaningful on CUDA builds; skip on the CPU-only wheel to avoid a
+# noisy "onnxruntime is not built with CUDA 12.x support" warning that the
+# ORT C++ layer prints on a stock CPU build.
+# ---------------------------------------------------------------------------
+if ort.get_device() != 'CPU':
+    try:
+        ort.preload_dlls()
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+MODELS_DIR = pathlib.Path(__file__).resolve().parent / 'models'
+TEST_DATA_DIR = pathlib.Path(__file__).resolve().parent / 'test_data'
+
+
+# ---------------------------------------------------------------------------
+# Provider selection: CUDA → DirectML → CPU
+# ---------------------------------------------------------------------------
+_AVAILABLE_PROVIDERS = ort.get_available_providers()
+_HAS_CUDA_BUILD = 'CUDAExecutionProvider' in _AVAILABLE_PROVIDERS
+_HAS_DML_BUILD = 'DmlExecutionProvider' in _AVAILABLE_PROVIDERS
+
+if _HAS_CUDA_BUILD:
+    _PROVIDER_PREFS = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+elif _HAS_DML_BUILD:
+    _PROVIDER_PREFS = [('DmlExecutionProvider', {'device_id': 0}),
+                       'CPUExecutionProvider']
+else:
+    _PROVIDER_PREFS = ['CPUExecutionProvider']
+
+_REQUESTED_DML = _HAS_DML_BUILD and not _HAS_CUDA_BUILD
+
+_SESSIONS = {}
+_DEVICE = None
+_DEVICE_NAME = None
+
+
+def _get_session(path):
+    """Lazy-load an ONNX session by path and cache it for the process lifetime."""
+    global _DEVICE, _DEVICE_NAME
+    path = str(path)
+    if path not in _SESSIONS:
+        so = ort.SessionOptions()
+        so.log_severity_level = 3  # error-only
+        if _REQUESTED_DML:
+            so.enable_mem_pattern = False
+            so.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        sess = ort.InferenceSession(path, sess_options=so,
+                                    providers=_PROVIDER_PREFS)
+        if _DEVICE is None:
+            chosen = sess.get_providers()
+            if 'CUDAExecutionProvider' in chosen:
+                _DEVICE, _DEVICE_NAME = 'cuda', 'cuda'
+            elif 'DmlExecutionProvider' in chosen:
+                _DEVICE, _DEVICE_NAME = 'dml', 'directml'
+            else:
+                _DEVICE, _DEVICE_NAME = 'cpu', 'cpu'
+        _SESSIONS[path] = sess
+    return _SESSIONS[path]
+
+
+# ---------------------------------------------------------------------------
+# Shape helpers
+# ---------------------------------------------------------------------------
+
+def _to_batch(x):
+    """Normalise (H,W), (N,H,W), or (N,H,W,1) input to (N,H,W,1)."""
     if x.ndim == 2:
-        return np.expand_dims(x, axis=(0, 3))
-    elif x.ndim == 3 and x.shape[-1] != 1:
-        return np.expand_dims(x, axis=3)
-    else:
-        return x
-
-def add_extra_row_or_column(x):
-    if x.shape[1] % 2 == 1:
-        v_mean = x.mean(axis=(1, 2), keepdims=True)
-        v_mean_tiled = np.tile(v_mean, (1, 1, x.shape[2], 1))
-        x = np.concatenate((x, v_mean_tiled), axis=1)
-
-    if x.shape[2] % 2 == 1:
-        v_mean = x.mean(axis=(1, 2), keepdims=True)
-        v_mean_tiled = np.tile(v_mean, (1, x.shape[1], 1, 1))
-        x = np.concatenate((x, v_mean_tiled), axis=2)
-
+        return x[np.newaxis, ..., np.newaxis]
+    if x.ndim == 3 and x.shape[-1] != 1:
+        return x[..., np.newaxis]
     return x
 
-def add_extra_row_or_column_patch_based(x):
-    if x.shape[0] % 2 == 1:
-        v_mean = x.mean(axis=(0, 1), keepdims=True)
-        v_mean_tiled = np.tile(v_mean, (1, x.shape[1]))
-        x = np.concatenate((x, v_mean_tiled), axis=0)
 
-    if x.shape[1] % 2 == 1:
-        v_mean = x.mean(axis=(0, 1), keepdims=True)
-        v_mean_tiled = np.tile(v_mean, (x.shape[0], 1))
-        x = np.concatenate((x, v_mean_tiled), axis=1)
-
-    return x
-
-def remove_extra_row_or_column(x, x_i_sh):
-    if x_i_sh != x.shape:
-        return x[:, :x_i_sh[1], :x_i_sh[2], :]
-    else:
-        return x
-
-def remove_extra_row_or_column_patch_based(x, x_i_sh):
-    if x_i_sh != x.shape:
-        return x[:x_i_sh[0], :x_i_sh[1]]
-    else:
-        return x
-    
-def adjust_output_dimensions(x, x_i_shape):
-    ndim = len(x_i_shape)
+def _from_batch(x, original_shape):
+    """Squeeze (N,H,W,1) output back to match the original input rank."""
+    ndim = len(original_shape)
     if ndim == 2:
         return x.squeeze()
-    elif ndim == 3:
-        if x_i_shape[-1] == 1:
-            return x.squeeze(axis=0)
-        else:
-            return x.squeeze(axis=-1)  
-    else:
+    if ndim == 3:
+        return x.squeeze(axis=0) if original_shape[-1] == 1 else x.squeeze(axis=-1)
+    return x
+
+
+def _pad_to_even(x):
+    """Pad spatial dims to even sizes with the spatial mean. Works on 2D and 4D."""
+    spatial_axes = (1, 2) if x.ndim == 4 else (0, 1)
+    needs_pad = [ax for ax in spatial_axes if x.shape[ax] % 2 == 1]
+    if not needs_pad:
         return x
+    mean_val = x.mean(axis=spatial_axes, keepdims=True)
+    for ax in needs_pad:
+        shape = list(x.shape)
+        shape[ax] = 1
+        x = np.concatenate((x, np.broadcast_to(mean_val, shape)), axis=ax)
+    return x
 
-def get_centered_range(n, patch_size, stride):
-    patch_size_half = patch_size // 2
-    if patch_size_half == n-patch_size_half:
-        return np.array([patch_size_half])
 
-    p = np.arange(patch_size_half, n-patch_size_half, stride)
-    if p[-1] + patch_size_half < n:
-        p = np.append(p, n - patch_size_half)
+def _crop_to_shape(x, target_shape):
+    """Crop x back to target_shape (undo padding)."""
+    if x.shape == target_shape:
+        return x
+    return x[tuple(slice(s) for s in target_shape)]
+
+
+# ---------------------------------------------------------------------------
+# Patch-based helpers
+# ---------------------------------------------------------------------------
+
+def _centered_range(n, patch_size, stride):
+    half = patch_size // 2
+    if half == n - half:
+        return np.array([half])
+    p = np.arange(half, n - half, stride)
+    if p[-1] + half < n:
+        p = np.append(p, n - half)
     return p
 
-def get_range(im_shape, patch_size, strides):
-    py = get_centered_range(im_shape[0], patch_size[0], strides[0])
-    px = get_centered_range(im_shape[1], patch_size[1], strides[1])
 
+def _patch_slices(im_shape, patch_size, stride):
+    """Yield (slice_y, slice_x) for each patch position."""
+    py = _centered_range(im_shape[0], patch_size[0], stride[0])
+    px = _centered_range(im_shape[1], patch_size[1], stride[1])
+    half_h, half_w = patch_size[0] // 2, patch_size[1] // 2
     for iy in py:
         for ix in px:
-            yield slice(iy - patch_size[0] // 2, iy + patch_size[0] // 2), slice(ix - patch_size[1] // 2, ix + patch_size[1] // 2)
+            yield slice(iy - half_h, iy + half_h), slice(ix - half_w, ix + half_w)
 
-def process_prediction(data, x_r, count_map, window, ib, sy, sx):
-    for ik in range(ib):
-        x_r_ik = data[ik, ..., 0].squeeze() * window
-        count_map[sy[ik], sx[ik]] += window
-        x_r[sy[ik], sx[ik]] += x_r_ik        
 
-def butterworth_window(shape, cutoff_radius_ftr, order):
-    assert len(shape) == 2, "Shape must be a tuple of length 2 (height, width)"
-    assert 0 < cutoff_radius_ftr <= 0.5, "Cutoff frequency must be in the range (0, 0.5]"
+def _accumulate_patches(predictions, output, count_map, window, n, sy, sx):
+    """Add windowed predictions into the running output and count map."""
+    for k in range(n):
+        output[sy[k], sx[k]] += predictions[k, :, :, 0] * window
+        count_map[sy[k], sx[k]] += window
 
-    def butterworth_1d(length, cutoff_radius_ftr, order):
-        n = np.arange(-length//2, length-length//2)
-        window = 1 / (1 + (n / (cutoff_radius_ftr * length)) ** (2 * order))
-        return window
 
-    window_y = butterworth_1d(shape[0], cutoff_radius_ftr, order)
-    window_x = butterworth_1d(shape[1], cutoff_radius_ftr, order)
-    window = np.outer(window_y, window_x)
+def _butterworth_window(shape, cutoff=0.33, order=4):
+    """2D separable Butterworth low-pass window."""
+    def _bw1d(length):
+        n = np.arange(-length // 2, length - length // 2)
+        return 1.0 / (1.0 + (n / (cutoff * length)) ** (2 * order))
+    return np.outer(_bw1d(shape[0]), _bw1d(shape[1]))
 
-    return window
 
-class Model(tf.keras.Model):
+# ---------------------------------------------------------------------------
+# Network wrapper
+# ---------------------------------------------------------------------------
+
+class _onnx_network:
+    """ONNX-based inference wrapper for a single r_em restoration network."""
+
     def __init__(self, model_path):
-        super(Model, self).__init__()
-        self.base_model = tf.keras.models.load_model(model_path, compile=False)
-        self.base_model.compile()
-        
-    def call(self, inputs, training=None, mask=None):
-        return self.base_model(inputs, training=training, mask=mask)
-        
+        self._path = str(model_path)
+        self._session = _get_session(self._path)
+        self._input_name = self._session.get_inputs()[0].name
+
     def summary(self):
-        return self.base_model.summary()
-    
-    def predict(self, x, batch_size=16, verbose=0, steps=None, callbacks=None, max_queue_size=10, workers=1, use_multiprocessing=False):
-        x_i_sh = x.shape
+        """Print model info including the resolved execution device."""
+        inp = self._session.get_inputs()[0]
+        out = self._session.get_outputs()[0]
+        size_mb = pathlib.Path(self._path).stat().st_size / 1024 / 1024
+        print(f'r_em network: {pathlib.Path(self._path).stem}')
+        print(f'  Input:  {inp.name}  {inp.shape}  {inp.type}')
+        print(f'  Output: {out.name}  {out.shape}  {out.type}')
+        print(f'  Device: {_DEVICE_NAME}')
+        print(f'  Size:   {size_mb:.1f} MB')
 
-        # Expanding dimensions based on the input shape
-        x = expand_dimensions(x)
+    def _run(self, x):
+        """Run the ONNX session on a single batch."""
+        return self._session.run(
+            None, {self._input_name: np.ascontiguousarray(x, dtype=np.float32)}
+        )[0]
 
-        # Converting to float32 if necessary
-        x = x.astype(np.float32)
+    def predict(self, x, batch_size=16):
+        """Whole-image inference with auto-padding to even H/W."""
+        original_shape = x.shape
+        x = _to_batch(x).astype(np.float32, copy=False)
+        shape_before_pad = x.shape
+        x = _pad_to_even(x)
 
-        x_i_sh_e = x.shape
+        n = x.shape[0]
+        batch_size = min(batch_size, n)
 
-        # Adding extra row or column if necessary
-        x = add_extra_row_or_column(x)
+        if n <= batch_size:
+            x = self._run(x)
+        else:
+            x = np.concatenate(
+                [self._run(x[i:i + batch_size]) for i in range(0, n, batch_size)]
+            )
 
-        batch_size = min(batch_size, x.shape[0])
-
-        # Model prediction
-        x = self.base_model.predict(x, batch_size, verbose, steps, callbacks, max_queue_size, workers, use_multiprocessing)
-
-        # Removing extra row or column if added
-        x = remove_extra_row_or_column(x, x_i_sh_e)
-
-        # Adjusting output dimensions to match input dimensions
-        return adjust_output_dimensions(x, x_i_sh)
+        x = _crop_to_shape(x, shape_before_pad)
+        return _from_batch(x, original_shape)
 
     def predict_patch_based(self, x, patch_size=None, stride=None, batch_size=16):
+        """Patch-based inference with Butterworth-windowed blending."""
         if patch_size is None:
             return self.predict(x, batch_size=batch_size)
 
         x = x.squeeze().astype(np.float32)
+        original_shape = x.shape
+        x = _pad_to_even(x)
 
-        x_i_sh_e = x.shape
-        
-        # Adding extra row or column if necessary
-        x = add_extra_row_or_column_patch_based(x)
-        
         patch_size = max(patch_size, 128)
         patch_size = (min(patch_size, x.shape[0]), min(patch_size, x.shape[1]))
-        
-        # Adjust the stride to have an overlap between patches
-        overlap = (patch_size[0]//2, patch_size[1]//2)
+
+        overlap = (patch_size[0] // 2, patch_size[1] // 2)
         if stride is None:
             stride = overlap
         else:
             stride = (min(stride, overlap[0]), min(stride, overlap[1]))
 
         batch_size = max(batch_size, 4)
+        window = _butterworth_window(patch_size)
 
-        data = np.zeros((batch_size, *patch_size, 1), dtype=np.float32)
-        sy = [slice(0) for _ in range(batch_size)]
-        sx = [slice(0) for _ in range(batch_size)]
-
-        x_r = np.zeros(x.shape, dtype=np.float32)
+        output = np.zeros(x.shape, dtype=np.float32)
         count_map = np.zeros(x.shape, dtype=np.float32)
-        
-        window = butterworth_window(patch_size, 0.33, 4)
-        # window = butterworth_window(patch_size, 0.25, 2)
-            
+        batch_buf = np.zeros((batch_size, *patch_size, 1), dtype=np.float32)
+        sy, sx = [], []
+
         ib = 0
-        for s_iy, s_ix in get_range(x.shape, patch_size, stride):
-            if ib < batch_size:
-                data[ib, ..., 0] = x[s_iy, s_ix]
-                sy[ib] = s_iy
-                sx[ib] = s_ix
-                ib += 1
+        for s_iy, s_ix in _patch_slices(x.shape, patch_size, stride):
+            batch_buf[ib, :, :, 0] = x[s_iy, s_ix]
+            sy.append(s_iy)
+            sx.append(s_ix)
+            ib += 1
 
-                if ib == batch_size:
-                    data = self.base_model.predict(data, batch_size=batch_size)
-                    process_prediction(data, x_r, count_map, window, ib, sy, sx)
-                    ib = 0
+            if ib == batch_size:
+                preds = self._run(batch_buf)
+                _accumulate_patches(preds, output, count_map, window, ib, sy, sx)
+                sy.clear()
+                sx.clear()
+                ib = 0
 
-        if ib != batch_size:
-            data = self.base_model.predict(data[:ib, ...], batch_size=batch_size)
-            process_prediction(data, x_r, count_map, window, ib, sy, sx)
-            
-        # Normalize the denoised image using the count_map
-        x_r /= count_map
-        
-        # Removing extra row or column if added
-        x = remove_extra_row_or_column_patch_based(x, x_i_sh_e)
+        if ib > 0:
+            preds = self._run(batch_buf[:ib])
+            _accumulate_patches(preds, output, count_map, window, ib, sy, sx)
 
-        return x_r
+        output /= count_map
+        return _crop_to_shape(output, original_shape)
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+_VALID_TAGS = ('sfr_hrsem', 'sfr_lrsem', 'sfr_hrstem',
+               'sfr_lrstem', 'sfr_hrtem', 'sfr_lrtem')
+
 
 def load_network(model_name: str = 'sfr_hrstem'):
-    """
-    Load r_em neural network model.
+    """Load an r_em restoration network by tag or file path."""
+    if os.path.isfile(model_name):
+        return _onnx_network(pathlib.Path(model_name).resolve())
+    model_name = model_name.lower()
+    model_path = MODELS_DIR / f'{model_name}.onnx'
+    if not model_path.is_file():
+        raise FileNotFoundError(
+            f"No model '{model_name}'. Valid tags: {', '.join(_VALID_TAGS)}"
+        )
+    return _onnx_network(model_path)
 
-    :param model_name: A string representing the name of the model.
-    :return: A tensorflow.keras.Model object.
-    """
-    if os.path.isdir(model_name):
-        model_path = pathlib.Path(model_name).resolve()
-    else: 
-        model_name = model_name.lower()
-        model_path = pathlib.Path(__file__).resolve().parent / 'models' / model_name
 
-    model = Model(model_path)
-
-    return model
-
-def load_sim_test_data(file_name: str = 'sfr_hrstem') -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Load test data for r_em neural network.
-
-    :param model_name: A string representing the name of the model.
-    :return: A tuple containing two numpy arrays representing the input (x) and output (y) data.
-    """
+def load_sim_test_data(file_name: str = 'sfr_hrstem') -> tuple[np.ndarray, np.ndarray]:
+    """Load simulated test data (x, y) for a given modality tag."""
     if os.path.isfile(file_name):
         path = pathlib.Path(file_name).resolve()
     else:
         file_name = file_name.lower()
-        path = pathlib.Path(__file__).resolve().parent / 'test_data' / f'{file_name}.h5'
-
+        path = TEST_DATA_DIR / f'{file_name}.h5'
 
     with h5py.File(path, 'r') as h5file:
         x = np.asarray(h5file['x'][:], dtype=np.float32).transpose(0, 3, 2, 1)
         y = np.asarray(h5file['y'][:], dtype=np.float32).transpose(0, 3, 2, 1)
-    
+
     return x, y
 
-def load_hrstem_exp_test_data(file_name: str = 'exp_hrstem') -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Load test data for r_em neural network.
 
-    :param model_name: A string representing the name of the model.
-    :return: A tuple containing two numpy arrays representing the input (x) and output (y) data.
-    """
-
+def load_hrstem_exp_test_data(file_name: str = 'exp_hrstem'):
+    """Load experimental HRSTEM test data."""
     if os.path.isfile(file_name):
         path = pathlib.Path(file_name).resolve()
     else:
         file_name = file_name.lower()
-        path = pathlib.Path(__file__).resolve().parent / 'test_data' / f'{file_name}.h5'
+        path = TEST_DATA_DIR / f'{file_name}.h5'
 
     with h5py.File(path, 'r') as f:
         x = f['x'][:]
@@ -261,5 +320,5 @@ def load_hrstem_exp_test_data(file_name: str = 'exp_hrstem') -> Tuple[np.ndarray
             x = np.asarray(x, dtype=np.float32).transpose(0, 3, 2, 1)
         else:
             x = np.asarray(x, dtype=np.float32).transpose(1, 0)
-    
+
     return x

@@ -1,89 +1,59 @@
+# Copyright 2026 Ivan Lobato / NeuralSoftX
+# SPDX-License-Identifier: Apache-2.0
 """
-tk_r_em network suites designed to restore different modalities of electron microscopy data
+Example 1: restore simulated electron microscopy data.
+
+Loads bundled test data (distorted + ground truth), runs inference,
+and plots a side-by-side comparison: detected | restored | ground truth.
 
 Author: Ivan Lobato
-Email: Ivanlh20@gmail.com
+Email: ivan.lobato@neuralsoftx.com
 """
-
 import os
-import matplotlib
+import time
 
-# Check if running on remote SSH and use appropriate backend for matplotlib
-remote_ssh = "SSH_CONNECTION" in os.environ
-matplotlib.use('Agg' if remote_ssh else 'TkAgg')
+os.environ.setdefault("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+
 import matplotlib.pyplot as plt
-
-def fcn_set_gpu_id(gpu_visible_devices: str = "0") -> None:
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpu_visible_devices
-
-fcn_set_gpu_id("0")
-
 from tk_r_em import load_network, load_sim_test_data
 
-def fcn_inference():
-    """
-    Perform inference on test data using a pre-trained model and visualize the results.
-    """
-    # select one of the available networks from [sfr_hrsem, sfr_lrsem, sfr_hrstem, sfr_lrstem, sfr_hrtem, sfr_lrtem]
+
+def main():
+    # select one of: sfr_hrsem, sfr_lrsem, sfr_hrstem, sfr_lrstem, sfr_hrtem, sfr_lrtem
     net_name = 'sfr_hrstem'
-    
-    # load its corresponding data
-    x, y = load_sim_test_data(net_name)
-
-    # load its corresponding model
-    r_em_nn = load_network(net_name)
-    r_em_nn.summary()
-
-    n_data = x.shape[0]
     batch_size = 8
 
-    # run inference
-    y_p = r_em_nn.predict(x, batch_size)
+    x, y = load_sim_test_data(net_name)
+    net = load_network(net_name)
+    net.summary()
 
-    fig, axs = plt.subplots(3, n_data, figsize=(48, 6))
+    t_0 = time.perf_counter()
+    y_p = net.predict(x, batch_size=batch_size)
+    t_e = time.perf_counter() - t_0
 
-    for ik in range(n_data):
-        x_ik = x[ik, :, :, 0].squeeze()
-        y_p_ik = y_p[ik, :, :, 0].squeeze()
-        y_ik = y[ik, :, :, 0].squeeze()
+    n = x.shape[0]
+    print(f'[{net_name}] {n} images  |  {t_e:.3f} s  |  '
+          f'{1e3*t_e/n:.2f} ms/image  |  {n/t_e:.1f} images/s')
 
-        ir = 0
-        axs[ir][ik].imshow(x_ik, cmap='gray')
-        axs[ir][ik].set_xticks([])
-        axs[ir][ik].set_yticks([])
-        axs[ir][ik].grid(False)
-        
-        if ik == 0:
-            axs[ir][ik].set_ylabel(f"Detected {net_name} image", fontsize=14, )
+    n_cols = x.shape[0]
+    fig, axs = plt.subplots(3, n_cols, figsize=(2.5 * n_cols, 7.5))
 
-        ir = 1
-        axs[ir][ik].imshow(y_p_ik, cmap='gray')
-        axs[ir][ik].set_xticks([])
-        axs[ir][ik].set_yticks([])
-        axs[ir][ik].grid(False)
+    for k in range(n_cols):
+        for row, (img, label) in enumerate([
+            (x[k, :, :, 0], "Detected"),
+            (y_p[k, :, :, 0], "Restored"),
+            (y[k, :, :, 0], "Ground truth"),
+        ]):
+            axs[row][k].imshow(img.squeeze(), cmap='gray')
+            axs[row][k].set_xticks([]); axs[row][k].set_yticks([])
+            if k == 0:
+                axs[row][k].set_ylabel(label, fontsize=12)
 
-        if ik == 0:
-            axs[ir][ik].set_ylabel(f"Restored {net_name} image", fontsize=14)
-        
-        ir = 2
-        axs[ir][ik].imshow(y_ik, cmap='gray')
-        axs[ir][ik].set_xticks([])
-        axs[ir][ik].set_yticks([])
-        axs[ir][ik].grid(False)
+    fig.subplots_adjust(wspace=0.05, hspace=0.05)
+    plt.savefig(f"restored_{net_name}_sim.png", dpi=150, bbox_inches='tight')
+    plt.show()
 
-        if ik == 0:
-            axs[ir][ik].set_ylabel(f"Ground truth {net_name} image", fontsize=14)
-
-    fig.subplots_adjust(hspace=2, wspace=10)
-    fig.tight_layout()
-    
-    if remote_ssh:
-        plt.savefig(f"restored_{net_name}.png", format='png')
-    else:
-        plt.show()
-
-    print('Done')
 
 if __name__ == '__main__':
-    fcn_inference()
+    main()
