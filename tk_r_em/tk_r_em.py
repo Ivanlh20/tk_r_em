@@ -1,5 +1,5 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """ONNX-based inference for r_em electron microscopy image restoration networks.
 
 Author: Ivan Lobato
@@ -31,10 +31,15 @@ except ImportError as _e:
 # ORT C++ layer prints on a stock CPU build.
 # ---------------------------------------------------------------------------
 if ort.get_device() != 'CPU':
+    import warnings
     try:
         ort.preload_dlls()
-    except Exception:
-        pass
+    except Exception as _dll_err:
+        warnings.warn(
+            f"ort.preload_dlls() failed: {_dll_err}. "
+            "CUDA sessions may still work but could be slower.",
+            stacklevel=1,
+        )
 
 
 # ---------------------------------------------------------------------------

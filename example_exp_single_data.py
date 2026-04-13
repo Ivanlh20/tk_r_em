@@ -1,11 +1,6 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
-"""
-Example 4: restore a single experimental HRSTEM image in one shot.
-
-Unlike Example 3 (patch-based), this feeds the entire image through
-the network in a single forward pass. Requires enough GPU/CPU memory
-to hold the full image.
+# SPDX-License-Identifier: GPL-3.0-only
+"""Restore a single experimental HRSTEM image.
 
 Author: Ivan Lobato
 Email: ivan.lobato@neuralsoftx.com

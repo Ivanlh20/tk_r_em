@@ -1,5 +1,10 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
+"""tk_r_em: ONNX-based electron microscopy image restoration.
+
+Author: Ivan Lobato
+Email: ivan.lobato@neuralsoftx.com
+"""
 
 from .version import __version__
 

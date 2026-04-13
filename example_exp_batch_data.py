@@ -1,10 +1,6 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
-"""
-Example 2: restore experimental HRSTEM data (batch of small images).
-
-Loads bundled experimental HRSTEM images, runs batch inference,
-and plots a side-by-side comparison: experimental | restored.
+# SPDX-License-Identifier: GPL-3.0-only
+"""Restore experimental HRSTEM data (batch of small images).
 
 Author: Ivan Lobato
 Email: ivan.lobato@neuralsoftx.com

@@ -1,5 +1,5 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Multi-format image loading for electron microscopy data.
 
 Author: Ivan Lobato
@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 
 
-_EM_EXTENSIONS = {'.ser', '.dm3', '.dm4'}
+_EM_EXTENSIONS = {'.ser', '.dm3', '.dm4', '.emd'}
 _PIL_EXTENSIONS = {'.png', '.tif', '.tiff', '.jpg', '.jpeg'}
 
 
@@ -23,14 +23,16 @@ def _load_pil(file_obj):
 
 
 def _load_em_format(file_obj, ext):
-    """Load SER/DM3/DM4 via rosettasciio, writing to temp file first."""
+    """Load SER/DM3/DM4/EMD via rosettasciio, writing to temp file first."""
     from rsciio.tia import file_reader as _ser_reader
     from rsciio.digitalmicrograph import file_reader as _dm_reader
+    from rsciio.emd import file_reader as _emd_reader
 
     readers = {
         '.ser': _ser_reader,
         '.dm3': _dm_reader,
         '.dm4': _dm_reader,
+        '.emd': _emd_reader,
     }
     reader = readers[ext]
 

@@ -1,5 +1,5 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: GPL-3.0-only
 """Streamlit web UI for interactive electron microscopy image restoration.
 
 Author: Ivan Lobato
@@ -23,7 +23,7 @@ st.set_page_config(
 from tk_r_em import load_network
 from tk_r_em.file_io import load_image
 
-SUPPORTED_FORMATS = ["png", "jpg", "jpeg", "tif", "tiff", "ser", "dm3", "dm4"]
+SUPPORTED_FORMATS = ["png", "jpg", "jpeg", "tif", "tiff", "ser", "dm3", "dm4", "emd"]
 
 _EXPORT_FORMATS = {"HDF5 (.h5)": ".h5", "TIFF float32 (.tif)": ".tif", "PNG uint8 (.png)": ".png"}
 _MIME = {".h5": "application/x-hdf5", ".tif": "image/tiff", ".png": "image/png"}
@@ -53,10 +53,7 @@ def _serialise_image(arr, fmt):
 def _get_available_models():
     """Return {model_stem: path} for every .onnx file in tk_r_em/models/."""
     models_dir = pathlib.Path(__file__).parent / "tk_r_em" / "models"
-    try:
-        return {f.stem: str(f) for f in sorted(models_dir.glob("*.onnx"))}
-    except Exception:
-        return {}
+    return {f.stem: str(f) for f in sorted(models_dir.glob("*.onnx"))}
 
 
 model_paths = _get_available_models()
@@ -258,11 +255,13 @@ with main:
                 st.text_input("Flip (s)", value=st.session_state.get("flip_time_text", "0.25"),
                               key="flip_time_text", label_visibility="collapsed")
 
+            flip_time_raw = st.session_state.get("flip_time_text", "0.25")
             try:
-                flip_time_val = float(st.session_state.get("flip_time_text", "0.25"))
+                flip_time_val = float(flip_time_raw)
                 if flip_time_val <= 0:
-                    flip_time_val = 0.25
+                    raise ValueError("flip time must be positive")
             except (ValueError, TypeError):
+                st.warning(f"Invalid flip time '{flip_time_raw}', using 0.25 s.")
                 flip_time_val = 0.25
 
             # Display width — always visible
@@ -310,7 +309,7 @@ with main:
             )
             c1, c2, c3 = st.columns([1, 1, 1])
             with c2:
-                st.image(raw_uint8, caption="Preview", width="stretch")
+                st.image(raw_uint8, caption="Preview", use_container_width=True)
 
     else:
         st.info("Upload an EM image and click **Restore** to begin.")

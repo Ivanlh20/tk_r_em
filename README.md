@@ -297,7 +297,7 @@ pip install -e ".[cpu]"   # or [gpu] / [directml]
 streamlit run app.py
 ```
 
-Upload an EM image (PNG, TIF, SER, DM3, DM4), select a model and inference mode (whole-image or patch-based), then click **Restore**. Results are shown in a comparison slider (drag to reveal original vs. restored) or flip mode (toggle between frames at a configurable interval).
+Upload an EM image (PNG, TIF, SER, DM3, DM4, EMD), select a model and inference mode (whole-image or patch-based), then click **Restore**. Results are shown in a comparison slider (drag to reveal original vs. restored) or flip mode (toggle between frames at a configurable interval).
 
 ![](images/app.png)
 *Figure 7. EM Image Restoration Studio — comparison slider showing original (left) and restored (right) HRSTEM image.*

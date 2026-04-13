@@ -1,11 +1,6 @@
 # Copyright 2026 Ivan Lobato / NeuralSoftX
-# SPDX-License-Identifier: Apache-2.0
-"""
-Example 3: restore a single large experimental HRSTEM image using
-patch-based inference (Butterworth-windowed tiling).
-
-Use this when the full image does not fit in GPU memory, or when
-restoring images larger than the training patch size (256x256).
+# SPDX-License-Identifier: GPL-3.0-only
+"""Restore a large experimental HRSTEM image using patch-based inference.
 
 Author: Ivan Lobato
 Email: ivan.lobato@neuralsoftx.com

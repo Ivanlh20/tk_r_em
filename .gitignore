@@ -1,0 +1,17 @@
+# IDE / editor state
+.streamlit/
+.vscode/
+.history/
+.DS_Store
+*.swp
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Packaging artefacts
+*.egg-info/
+build/
+dist/
+*.tar.gz
