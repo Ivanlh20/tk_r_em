@@ -5,6 +5,8 @@
 Author: Ivan Lobato
 Email: ivan.lobato@neuralsoftx.com
 """
+import io
+import os
 import time
 import pathlib
 
@@ -22,6 +24,29 @@ from tk_r_em import load_network
 from tk_r_em.file_io import load_image
 
 SUPPORTED_FORMATS = ["png", "jpg", "jpeg", "tif", "tiff", "ser", "dm3", "dm4"]
+
+_EXPORT_FORMATS = {"HDF5 (.h5)": ".h5", "TIFF float32 (.tif)": ".tif", "PNG uint8 (.png)": ".png"}
+_MIME = {".h5": "application/x-hdf5", ".tif": "image/tiff", ".png": "image/png"}
+
+
+def _serialise_image(arr, fmt):
+    """Encode a 2D float32 array to bytes in the chosen format."""
+    buf = io.BytesIO()
+    if fmt == ".h5":
+        import h5py
+        with h5py.File(buf, "w") as f:
+            f.create_dataset("data", data=arr.astype(np.float32))
+    elif fmt == ".tif":
+        from PIL import Image
+        Image.fromarray(arr.astype(np.float32), mode="F").save(buf, format="TIFF")
+    elif fmt == ".png":
+        from PIL import Image
+        mn, mx = arr.min(), arr.max()
+        denom = mx - mn if mx > mn else 1.0
+        u8 = np.clip((arr - mn) / denom * 255.0, 0, 255).astype(np.uint8)
+        Image.fromarray(u8, mode="L").save(buf, format="PNG")
+    buf.seek(0)
+    return buf.getvalue(), _MIME[fmt]
 
 
 # --------- FIND ONNX MODELS ---------
@@ -89,6 +114,30 @@ run_restore = st.sidebar.button(
     disabled=(uploaded_file is None),
 )
 
+# --- Download controls (visible only after restoration) ---
+if st.session_state.get("prediction") is not None:
+    st.sidebar.markdown("---")
+    export_label = st.sidebar.selectbox("Export format", list(_EXPORT_FORMATS.keys()))
+    export_ext = _EXPORT_FORMATS[export_label]
+    uploaded_stem = os.path.splitext(st.session_state["last_uploaded_file"])[0]
+    model_tag = st.session_state["last_model"] or "model"
+
+    orig_bytes, orig_mime = _serialise_image(st.session_state["img_array"], export_ext)
+    st.sidebar.download_button(
+        "Download original",
+        data=orig_bytes,
+        file_name=f"{uploaded_stem}_original{export_ext}",
+        mime=orig_mime,
+    )
+
+    rest_bytes, rest_mime = _serialise_image(st.session_state["prediction"], export_ext)
+    st.sidebar.download_button(
+        "Download restored",
+        data=rest_bytes,
+        file_name=f"{uploaded_stem}_restored_{model_tag}{export_ext}",
+        mime=rest_mime,
+    )
+
 # --- Reset prediction when model changes ---
 if "last_model" in st.session_state and st.session_state["last_model"] != selected_model:
     st.session_state["prediction"] = None
@@ -115,6 +164,7 @@ def _normalise_to_uint8(img):
     denom = mx - mn if mx > mn else 1.0
     norm = np.clip((img - mn) / denom, 0.0, 1.0)
     return (np.stack([norm] * 3, axis=-1) * 255).astype(np.uint8)
+
 
 
 # ============== MAIN LAYOUT ==============
