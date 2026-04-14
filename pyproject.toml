@@ -23,7 +23,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-cpu = ["onnxruntime>=1.21"]
+# Notebook deps are auto-included in every runtime extra below so a single
+# `pip install -e ".[cpu]"` (or .[gpu] / .[directml]) is enough to run the
+# bundled tutorial notebooks.
+notebook = [
+    "ipykernel",        # run cells in VSCode / Jupyter
+    "tqdm",             # workshop notebook: video progress bar
+    "imageio",          # workshop notebook: video I/O
+    "imageio-ffmpeg",   # workshop notebook: mp4 reading / writing
+    "scikit-image",     # intro notebook: SSIM metric
+]
+cpu = ["onnxruntime>=1.21", "tk-r-em[notebook]"]
 gpu = [
     "onnxruntime-gpu>=1.21",
     "nvidia-cudnn-cu12>=9.0",
@@ -33,14 +43,11 @@ gpu = [
     "nvidia-curand-cu12",
     "nvidia-cusolver-cu12",
     "nvidia-cusparse-cu12",
+    "tk-r-em[notebook]",
 ]
-directml = ["onnxruntime-directml>=1.21; sys_platform == 'win32'"]
-notebook = [
-    "ipykernel",        # run cells in VSCode / Jupyter
-    "tqdm",             # workshop notebook: video progress bar
-    "imageio",          # workshop notebook: video I/O
-    "imageio-ffmpeg",   # workshop notebook: mp4 reading / writing
-    "scikit-image",     # intro notebook: SSIM metric
+directml = [
+    "onnxruntime-directml>=1.21; sys_platform == 'win32'",
+    "tk-r-em[notebook]",
 ]
 
 [tool.setuptools.packages.find]

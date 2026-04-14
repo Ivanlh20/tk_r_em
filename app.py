@@ -58,9 +58,6 @@ def _serialise_image(arr, fmt):
 
 
 # --------- FIND ONNX MODELS ---------
-_MODELS_SEARCH_REPORT = []
-
-
 def _get_available_models():
     """Return {model_stem: path} for every .onnx file, looking both in the clone and the installed package."""
     candidates = [pathlib.Path(__file__).parent / "tk_r_em" / "models"]
@@ -68,13 +65,8 @@ def _get_available_models():
     tk_r_em_file = getattr(tk_r_em, "__file__", None)
     if tk_r_em_file:
         candidates.append(pathlib.Path(tk_r_em_file).parent / "models")
-    _MODELS_SEARCH_REPORT.append(f"tk_r_em.__file__ = {tk_r_em_file!r}")
     for models_dir in candidates:
-        exists = models_dir.exists()
-        onnx_files = sorted(models_dir.glob("*.onnx")) if exists else []
-        _MODELS_SEARCH_REPORT.append(
-            f"  candidate: {models_dir}  exists={exists}  onnx_count={len(onnx_files)}"
-        )
+        onnx_files = sorted(models_dir.glob("*.onnx"))
         if onnx_files:
             return {f.stem: str(f) for f in onnx_files}
     return {}
@@ -114,10 +106,7 @@ if model_names:
     selected_model = st.sidebar.selectbox("Model", model_names, index=default_idx)
     model_path = model_paths[selected_model]
 else:
-    st.sidebar.warning(
-        "No .onnx models found.\n\n"
-        "Search report:\n" + "\n".join(_MODELS_SEARCH_REPORT)
-    )
+    st.sidebar.warning("No .onnx models found in tk_r_em/models.")
 
 inference_mode = st.sidebar.radio(
     "Inference mode",

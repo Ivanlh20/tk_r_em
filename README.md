@@ -64,7 +64,7 @@ Start by cloning the repository (once, regardless of backend):
 
 ```bash
 git clone https://github.com/Ivanlh20/tk_r_em.git
-cd r_em/tk_r_em
+cd tk_r_em
 ```
 
 ## Create and activate a virtual environment
@@ -193,13 +193,12 @@ pip install -e ".[cpu]"      # or .[gpu] / .[directml]
 
 ## Running the bundled notebooks
 
-The [`notebooks/`](notebooks/) and [`workshop_29_10_2024/`](workshop_29_10_2024/) directories ship two tutorial notebooks that pull in a few additional packages (`ipykernel`, `imageio`, `imageio-ffmpeg`, `tqdm`, `scikit-image`). To run them, combine the `[notebook]` extra with one of the runtime extras:
+The [`tutorials/`](tutorials/) directory ships two tutorial notebooks:
 
-```bash
-pip install -e ".[cpu,notebook]"      # or .[gpu,notebook] / .[directml,notebook]
-```
+- [`01_introduction.ipynb`](tutorials/01_introduction.ipynb) — CNN basics and single-shot EM image restoration.
+- [`02_tem_ml_workshop_artemi_2024_10_28.ipynb`](tutorials/02_tem_ml_workshop_artemi_2024_10_28.ipynb) — full workshop walkthrough from the [ARTEMI *Workshop on machine learning methods in transmission electron microscopy*](https://artemi.se/workshop-on-machine-learning-methods-in-transmission-electron-microscopy/) held at Linköping University on 28–29 October 2024: network loading, whole-image / patch-based / batch inference, video synthesis, metrics.
 
-API-only users can skip this — the core `tk_r_em` package does not depend on any of these packages.
+The workshop slide deck sits next to the notebook at [`tutorials/tem_ml_workshop_artemi_2024_10_28_slides.pptx`](tutorials/tem_ml_workshop_artemi_2024_10_28_slides.pptx); notebook input data is under [`tutorials/data/`](tutorials/data/) and video inputs under [`tutorials/media/`](tutorials/media/). All dependencies (`ipykernel`, `imageio`, `imageio-ffmpeg`, `tqdm`, `scikit-image`) are pulled in automatically by every runtime extra above (`[cpu]`, `[gpu]`, `[directml]`) — no extra install step.
 
 # Quick start
 
