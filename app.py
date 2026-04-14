@@ -7,8 +7,16 @@ Email: ivan.lobato@neuralsoftx.com
 """
 import io
 import os
+import sys
 import time
 import pathlib
+
+# Windows quirk: running `streamlit run app.py` from the clone directory puts
+# that directory on sys.path first, so Python can resolve `tk_r_em` to the
+# sibling subdirectory as a namespace package instead of the installed wheel.
+# Drop the script directory from sys.path so the installed package always wins.
+_here = os.path.dirname(os.path.abspath(__file__))
+sys.path[:] = [p for p in sys.path if os.path.abspath(p) != _here]
 
 import streamlit as st
 import numpy as np
