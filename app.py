@@ -59,8 +59,9 @@ def _serialise_image(arr, fmt):
 
 # --------- FIND ONNX MODELS ---------
 def _get_available_models():
-    """Return {model_stem: path} for every .onnx file in tk_r_em/models/."""
-    models_dir = pathlib.Path(__file__).parent / "tk_r_em" / "models"
+    """Return {model_stem: path} for every .onnx file shipped with the installed tk_r_em package."""
+    import tk_r_em
+    models_dir = pathlib.Path(tk_r_em.__file__).parent / "models"
     return {f.stem: str(f) for f in sorted(models_dir.glob("*.onnx"))}
 
 
